@@ -37,7 +37,7 @@ export async function searchPlaces(queryText, type) {
     bias: `proximity:${BUDAPEST_CENTER}`,
     limit: RESULT_LIMIT,
     lang: 'en',
-    name: trimmedQuery,
+    text: `${trimmedQuery} Budapest`,
     apiKey: GEOAPIFY_API_KEY
   });
 
