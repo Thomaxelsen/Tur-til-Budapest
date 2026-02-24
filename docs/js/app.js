@@ -3,7 +3,6 @@ import { searchPlaces } from './places-search.js';
 
 // === State ===
 let currentUser = localStorage.getItem('turplan_user') || null;
-let currentView = 'home';
 let currentSearchType = 'restaurant';
 let allItems = [];
 let itineraryItems = [];
@@ -829,7 +828,7 @@ function openLinkPopup(url, title, options = {}) {
   }
 
   if (externalLink) {
-    externalLink.textContent = forceExternalCta ? 'Åpne i ny fane ↗' : 'Åpne i ny fane ↗';
+    externalLink.textContent = 'Åpne i ny fane ↗';
   }
 
   iframe.classList.toggle('hidden', forceExternalCta);
@@ -1073,13 +1072,10 @@ function handleDragEnd(e) {
 // === Touch drag-and-drop (mobil) ===
 function setupTouchDrag(card) {
   let clone = null;
-  let startX, startY;
   let currentDropTarget = null;
 
   card.addEventListener('touchstart', (e) => {
     const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
     if (card.dataset.itinId) {
       draggedData = { kind: 'itin', id: card.dataset.itinId };
     } else {
