@@ -79,11 +79,24 @@ function setupEventListeners() {
     const type = container.dataset.type;
     const input = container.querySelector('.inline-search-input');
     const btn = container.querySelector('.inline-search-btn');
+    const clearBtn = container.querySelector('.inline-search-clear');
     const resultsDiv = container.querySelector('.inline-search-results');
 
-    btn.addEventListener('click', () => performInlineSearch(input, type, resultsDiv));
+    const doSearch = () => {
+      performInlineSearch(input, type, resultsDiv).then(() => {
+        clearBtn.classList.toggle('hidden', !resultsDiv.hasChildNodes());
+      });
+    };
+
+    btn.addEventListener('click', doSearch);
     input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') performInlineSearch(input, type, resultsDiv);
+      if (e.key === 'Enter') doSearch();
+    });
+
+    clearBtn.addEventListener('click', () => {
+      resultsDiv.innerHTML = '';
+      input.value = '';
+      clearBtn.classList.add('hidden');
     });
   });
 
@@ -107,16 +120,12 @@ function setupEventListeners() {
     addBtn.addEventListener('click', () => handleManualAdd(form, type));
   });
 
-  // Reiseplan: picker
-  document.getElementById('add-from-toplist-btn').addEventListener('click', openPicker);
-  document.getElementById('close-picker-btn').addEventListener('click', closePicker);
-
   // Reiseplan: drag-and-drop setup
   setupDragAndDrop();
 
   // Modal lukk
-  document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
-  document.querySelector('.modal-close').addEventListener('click', closeModal);
+  document.querySelector('#detail-modal .modal-backdrop').addEventListener('click', closeModal);
+  document.querySelector('#detail-modal .modal-close').addEventListener('click', closeModal);
 
   // Link-popup
   document.querySelectorAll('.link-popup').forEach(link => {
@@ -142,6 +151,15 @@ function switchView(view) {
   document.getElementById(`view-${view}`).classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-view="${view}"]`).classList.add('active');
+
+  // Tøm søkeresultater ved visningsbytte
+  document.querySelectorAll('.inline-search-results').forEach(el => { el.innerHTML = ''; });
+  document.querySelectorAll('.inline-search-input').forEach(el => { el.value = ''; });
+  document.querySelectorAll('.inline-search-clear').forEach(el => el.classList.add('hidden'));
+  const searchInput = document.getElementById('search-input');
+  const searchResults = document.getElementById('search-results');
+  if (searchInput) searchInput.value = '';
+  if (searchResults) searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter eller aktiviteter i Budapest</p></div>';
 }
 
 // === Firestore Listeners ===
@@ -157,6 +175,7 @@ function startListeners() {
   listenToAllItems((items) => {
     allItems = items;
     renderToplist();
+    renderItinerary();
   });
 
   listenToItinerary((items) => {
@@ -593,16 +612,26 @@ function showToast(message) {
 
 // === Reiseplan ===
 function renderItinerary() {
-  // Render uplanlagte items
-  const unplanned = itineraryItems.filter(i => !i.day || !i.slot);
-  const unplannedContainer = document.querySelector('#unplanned-items .slot-items') ||
-    document.getElementById('unplanned-items');
+  // Render uplanlagte items — auto-populert fra allItems med ≥3 stjerner
+  const itinItemIds = new Set(itineraryItems.map(i => i.itemId));
 
-  const unplannedEl = document.getElementById('unplanned-items');
-  if (unplanned.length === 0) {
-    unplannedEl.innerHTML = '<div class="slot-empty">Legg til items og dra dem hit eller til en dag</div>';
-  } else {
-    unplannedEl.innerHTML = unplanned.map(item => createItineraryCard(item)).join('');
+  const suggestions = allItems
+    .filter(i => i.averageRating >= 3 && i.ratingCount > 0 && !itinItemIds.has(i.id))
+    .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+
+  const unplanned = itineraryItems.filter(i => !i.day || !i.slot);
+
+  const byType = { restaurant: [], activity: [] };
+  unplanned.forEach(i => { if (byType[i.type]) byType[i.type].push({ ...i, kind: 'itin' }); });
+  suggestions.forEach(i => { if (byType[i.type]) byType[i.type].push({ ...i, kind: 'new' }); });
+
+  for (const type of ['restaurant', 'activity']) {
+    const el = document.getElementById(type === 'restaurant' ? 'unplanned-restaurants' : 'unplanned-activities');
+    if (!el) continue;
+    const items = byType[type];
+    el.innerHTML = items.length > 0
+      ? items.map(i => i.kind === 'itin' ? createItineraryCard(i) : createSuggestionCard(i)).join('')
+      : '<div class="slot-empty">Ingen forslag ennå</div>';
   }
 
   // Render planlagte items i tidsslotter
@@ -654,64 +683,26 @@ function createItineraryCard(item) {
     </div>`;
 }
 
-// === Picker: legg til fra listene ===
-function openPicker() {
-  const picker = document.getElementById('itinerary-picker');
-  const container = document.getElementById('picker-items');
-
-  // Vis alle items, marker de som allerede er i reiseplanen
-  const itineraryItemIds = new Set(itineraryItems.map(i => i.itemId));
-
-  const sorted = [...allItems].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
-
-  if (sorted.length === 0) {
-    container.innerHTML = '<div class="empty-state"><p>Ingen steder lagt til ennå. Legg til restauranter og aktiviteter først.</p></div>';
-  } else {
-    container.innerHTML = sorted.map(item => {
-      const alreadyAdded = itineraryItemIds.has(item.id);
-      const typeLabel = item.type === 'restaurant' ? '🍽️' : '🎯';
-      return `
-        <div class="picker-item">
-          <div class="picker-item-info">
-            <span class="picker-item-name">${typeLabel} ${escapeHtml(item.name)}</span>
-            ${item.averageRating > 0 ? `<span class="picker-item-rating">★ ${item.averageRating} (${item.ratingCount})</span>` : ''}
-          </div>
-          <button class="btn-add" data-item-id="${item.id}" data-name="${escapeHtml(item.name)}" data-type="${item.type}" ${alreadyAdded ? 'disabled' : ''}>
-            ${alreadyAdded ? 'Lagt til' : 'Legg til'}
-          </button>
-        </div>`;
-    }).join('');
-
-    container.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        btn.disabled = true;
-        btn.textContent = 'Legger til...';
-        try {
-          await addToItinerary(btn.dataset.itemId, btn.dataset.name, btn.dataset.type, currentUser);
-          btn.textContent = 'Lagt til';
-          showToast('Lagt til i reiseplan');
-        } catch (err) {
-          btn.disabled = false;
-          btn.textContent = 'Legg til';
-          showToast('Kunne ikke legge til');
-          console.error(err);
-        }
-      });
-    });
-  }
-
-  picker.classList.remove('hidden');
-}
-
-function closePicker() {
-  document.getElementById('itinerary-picker').classList.add('hidden');
+function createSuggestionCard(item) {
+  const typeLabel = item.type === 'restaurant' ? 'Restaurant' : 'Aktivitet';
+  return `
+    <div class="itinerary-card suggestion-card"
+         data-item-id="${item.id}"
+         data-name="${escapeHtml(item.name)}"
+         data-item-type="${item.type}"
+         draggable="true">
+      <span class="grip">⠿</span>
+      <span class="itin-name">${escapeHtml(item.name)}</span>
+      <span class="itin-type ${item.type}">${typeLabel}</span>
+      ${item.averageRating > 0 ? `<span class="itin-rating">★ ${item.averageRating}</span>` : ''}
+    </div>`;
 }
 
 // === Drag-and-drop ===
-let draggedId = null;
+let draggedData = null;
 
 function setupDragAndDrop() {
-  document.querySelectorAll('.time-slot, #unplanned-items').forEach(slot => {
+  document.querySelectorAll('.time-slot').forEach(slot => {
     slot.addEventListener('dragover', (e) => {
       e.preventDefault();
       slot.classList.add('drag-over');
@@ -719,34 +710,51 @@ function setupDragAndDrop() {
     slot.addEventListener('dragleave', () => {
       slot.classList.remove('drag-over');
     });
-    slot.addEventListener('drop', (e) => {
+    slot.addEventListener('drop', async (e) => {
       e.preventDefault();
       slot.classList.remove('drag-over');
-      const itinId = e.dataTransfer.getData('text/plain');
-      if (!itinId) return;
+      const raw = e.dataTransfer.getData('text/plain');
+      if (!raw) return;
 
       const day = slot.dataset.day || null;
       const slotName = slot.dataset.slot || null;
 
-      moveItineraryItem(itinId, day, slotName, 0).catch(err => {
+      try {
+        const data = JSON.parse(raw);
+        if (data.kind === 'itin') {
+          await moveItineraryItem(data.id, day, slotName, 0);
+        } else {
+          const docRef = await addToItinerary(data.itemId, data.name, data.itemType, currentUser);
+          if (day && slotName) {
+            await moveItineraryItem(docRef.id, day, slotName, 0);
+          }
+        }
+      } catch (err) {
         showToast('Kunne ikke flytte');
         console.error(err);
-      });
+      }
     });
   });
 }
 
 function handleDragStart(e) {
-  const id = e.target.dataset.itinId;
-  e.dataTransfer.setData('text/plain', id);
+  const card = e.currentTarget;
+  let data;
+  if (card.dataset.itinId) {
+    data = { kind: 'itin', id: card.dataset.itinId };
+  } else {
+    data = { kind: 'new', itemId: card.dataset.itemId,
+             name: card.dataset.name, itemType: card.dataset.itemType };
+  }
+  e.dataTransfer.setData('text/plain', JSON.stringify(data));
   e.dataTransfer.effectAllowed = 'move';
-  draggedId = id;
-  setTimeout(() => e.target.classList.add('dragging'), 0);
+  draggedData = data;
+  setTimeout(() => card.classList.add('dragging'), 0);
 }
 
 function handleDragEnd(e) {
-  e.target.classList.remove('dragging');
-  draggedId = null;
+  e.currentTarget.classList.remove('dragging');
+  draggedData = null;
   document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
 }
 
@@ -760,7 +768,12 @@ function setupTouchDrag(card) {
     const touch = e.touches[0];
     startX = touch.clientX;
     startY = touch.clientY;
-    draggedId = card.dataset.itinId;
+    if (card.dataset.itinId) {
+      draggedData = { kind: 'itin', id: card.dataset.itinId };
+    } else {
+      draggedData = { kind: 'new', itemId: card.dataset.itemId,
+                      name: card.dataset.name, itemType: card.dataset.itemType };
+    }
 
     clone = card.cloneNode(true);
     clone.style.position = 'fixed';
@@ -786,7 +799,7 @@ function setupTouchDrag(card) {
     const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
     clone.style.display = '';
 
-    const dropTarget = elementBelow?.closest('.time-slot, #unplanned-items');
+    const dropTarget = elementBelow?.closest('.time-slot');
     if (currentDropTarget && currentDropTarget !== dropTarget) {
       currentDropTarget.classList.remove('drag-over');
     }
@@ -803,18 +816,29 @@ function setupTouchDrag(card) {
     }
     card.classList.remove('dragging');
 
-    if (currentDropTarget && draggedId) {
+    if (currentDropTarget && draggedData) {
       const day = currentDropTarget.dataset.day || null;
       const slot = currentDropTarget.dataset.slot || null;
       currentDropTarget.classList.remove('drag-over');
 
-      moveItineraryItem(draggedId, day, slot, 0).catch(err => {
-        showToast('Kunne ikke flytte');
-        console.error(err);
-      });
+      (async () => {
+        try {
+          if (draggedData.kind === 'itin') {
+            await moveItineraryItem(draggedData.id, day, slot, 0);
+          } else {
+            const docRef = await addToItinerary(draggedData.itemId, draggedData.name, draggedData.itemType, currentUser);
+            if (day && slot) {
+              await moveItineraryItem(docRef.id, day, slot, 0);
+            }
+          }
+        } catch (err) {
+          showToast('Kunne ikke flytte');
+          console.error(err);
+        }
+      })();
     }
     currentDropTarget = null;
-    draggedId = null;
+    draggedData = null;
   }, { passive: true });
 
   function positionClone(touch) {

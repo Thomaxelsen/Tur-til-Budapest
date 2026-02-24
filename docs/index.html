@@ -45,6 +45,7 @@
           <div class="inline-search-row">
             <input type="text" class="inline-search-input" placeholder="Søk etter restaurant i Budapest..." autocomplete="off">
             <button class="inline-search-btn">🔍</button>
+            <button class="inline-search-clear hidden" title="Tøm søk">&times;</button>
             <button class="btn-manual-add">+ Manuelt</button>
           </div>
           <div class="manual-add-form hidden">
@@ -70,6 +71,7 @@
           <div class="inline-search-row">
             <input type="text" class="inline-search-input" placeholder="Søk etter aktivitet i Budapest..." autocomplete="off">
             <button class="inline-search-btn">🔍</button>
+            <button class="inline-search-clear hidden" title="Tøm søk">&times;</button>
             <button class="btn-manual-add">+ Manuelt</button>
           </div>
           <div class="manual-add-form hidden">
@@ -130,25 +132,18 @@
           </div>
         </div>
 
-        <!-- Legg til fra toppliste -->
-        <div class="itinerary-actions">
-          <button id="add-from-toplist-btn" class="btn-itinerary-add">+ Legg til fra listene</button>
-        </div>
-
-        <!-- Picker-modal for å velge items -->
-        <div id="itinerary-picker" class="itinerary-picker hidden">
-          <div class="picker-header">
-            <h3>Velg fra listene</h3>
-            <button id="close-picker-btn" class="modal-close">&times;</button>
-          </div>
-          <div id="picker-items" class="picker-items"></div>
-        </div>
-
-        <!-- Uplanlagte items -->
+        <!-- Uplanlagte items (auto-populert fra høyt-ratede items) -->
         <div class="unplanned-section">
           <h3>📌 Uplanlagte</h3>
-          <div id="unplanned-items" class="time-slot" data-day="" data-slot="">
-            <div class="slot-empty">Legg til items og dra dem hit eller til en dag</div>
+          <div class="unplanned-columns">
+            <div class="unplanned-col">
+              <h4>🍽️ Restauranter</h4>
+              <div id="unplanned-restaurants" class="time-slot" data-day="" data-slot=""></div>
+            </div>
+            <div class="unplanned-col">
+              <h4>🎯 Aktiviteter</h4>
+              <div id="unplanned-activities" class="time-slot" data-day="" data-slot=""></div>
+            </div>
           </div>
         </div>
 
@@ -324,27 +319,29 @@
       <div class="modal-backdrop"></div>
       <div class="modal-content">
         <button class="modal-close">&times;</button>
-        <h2 id="modal-name"></h2>
-        <p id="modal-address" class="modal-address"></p>
-        <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne lenke</a>
+        <div class="modal-body">
+          <h2 id="modal-name"></h2>
+          <p id="modal-address" class="modal-address"></p>
+          <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne lenke</a>
 
-        <div class="modal-section">
-          <h3>Vurderinger</h3>
-          <div id="modal-ratings" class="modal-ratings"></div>
+          <div class="modal-section">
+            <h3>Vurderinger</h3>
+            <div id="modal-ratings" class="modal-ratings"></div>
+          </div>
+
+          <div class="modal-section">
+            <h3>Din vurdering</h3>
+            <div id="modal-my-rating" class="star-rating-input"></div>
+          </div>
+
+          <div class="modal-section">
+            <h3>Notater</h3>
+            <textarea id="modal-notes" placeholder="Legg til et notat..." rows="3"></textarea>
+            <button id="save-notes-btn" class="btn btn-small">Lagre notat</button>
+          </div>
+
+          <button id="delete-item-btn" class="btn btn-danger">Slett fra listen</button>
         </div>
-
-        <div class="modal-section">
-          <h3>Din vurdering</h3>
-          <div id="modal-my-rating" class="star-rating-input"></div>
-        </div>
-
-        <div class="modal-section">
-          <h3>Notater</h3>
-          <textarea id="modal-notes" placeholder="Legg til et notat..." rows="3"></textarea>
-          <button id="save-notes-btn" class="btn btn-small">Lagre notat</button>
-        </div>
-
-        <button id="delete-item-btn" class="btn btn-danger">Slett fra listen</button>
       </div>
     </div>
 
