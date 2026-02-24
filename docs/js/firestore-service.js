@@ -5,9 +5,9 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  getDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   getDocs,
   serverTimestamp
@@ -35,14 +35,11 @@ export async function addItem(item) {
 
 // Lytt til items av en bestemt type (sanntid)
 export function listenToItems(type, callback) {
-  const q = query(
-    itemsRef,
-    where('type', '==', type),
-    orderBy('averageRating', 'desc')
-  );
+  const q = query(itemsRef, where('type', '==', type));
 
   return onSnapshot(q, (snapshot) => {
     const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
     callback(items);
   }, (error) => {
     console.error('Feil ved lasting av items:', error);
@@ -52,10 +49,9 @@ export function listenToItems(type, callback) {
 
 // Lytt til alle items (for toppliste)
 export function listenToAllItems(callback) {
-  const q = query(itemsRef, orderBy('averageRating', 'desc'));
-
-  return onSnapshot(q, (snapshot) => {
+  return onSnapshot(itemsRef, (snapshot) => {
     const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
     callback(items);
   }, (error) => {
     console.error('Feil ved lasting av items:', error);
@@ -68,13 +64,10 @@ export async function rateItem(itemId, userName, rating) {
   const itemRef = doc(db, 'items', itemId);
 
   // Hent gjeldende ratings for å beregne nytt snitt
-  // Vi bruker en enkel tilnærming: oppdater rating-map og beregn snitt
-  const q = query(itemsRef, where('__name__', '==', itemId));
-  const snapshot = await getDocs(q);
+  const itemSnap = await getDoc(itemRef);
+  if (!itemSnap.exists()) return;
 
-  if (snapshot.empty) return;
-
-  const data = snapshot.docs[0].data();
+  const data = itemSnap.data();
   const ratings = { ...data.ratings, [userName]: rating };
   const values = Object.values(ratings);
   const averageRating = values.reduce((a, b) => a + b, 0) / values.length;
