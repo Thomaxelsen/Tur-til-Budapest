@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#2d7d6f">
+  <meta name="description" content="Turplanlegger for Budapest">
+  <title>Budapest 2026</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇭🇺</text></svg>">
+</head>
+<body>
+  <!-- Brukervelger (vises hvis ingen bruker er valgt) -->
+  <div id="user-select-screen" class="screen">
+    <div class="user-select-card">
+      <h1>Budapest 2026</h1>
+      <p>Hvem er du?</p>
+      <div class="user-buttons">
+        <button class="user-btn" data-user="Thomas">Thomas</button>
+        <button class="user-btn" data-user="Carina">Carina</button>
+        <button class="user-btn" data-user="Kristine">Kristine</button>
+        <button class="user-btn" data-user="Kim">Kim</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hovedapp -->
+  <div id="app" class="screen hidden">
+    <!-- Topbar -->
+    <header class="topbar">
+      <h1>Budapest 2026</h1>
+      <div class="topbar-right">
+        <span id="current-user-name"></span>
+        <button id="change-user-btn" class="icon-btn" title="Bytt bruker">👤</button>
+      </div>
+    </header>
+
+    <!-- Innhold -->
+    <main id="main-content">
+      <!-- Restauranter -->
+      <section id="view-restaurants" class="view active">
+        <div class="view-header">
+          <h2>Restauranter</h2>
+        </div>
+        <div id="restaurant-list" class="item-list">
+          <div class="empty-state">
+            <p>Ingen restauranter lagt til ennå.</p>
+            <p>Bruk søk-fanen for å finne steder!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Aktiviteter -->
+      <section id="view-activities" class="view">
+        <div class="view-header">
+          <h2>Aktiviteter</h2>
+        </div>
+        <div id="activity-list" class="item-list">
+          <div class="empty-state">
+            <p>Ingen aktiviteter lagt til ennå.</p>
+            <p>Bruk søk-fanen for å finne steder!</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Toppliste -->
+      <section id="view-toplist" class="view">
+        <div class="view-header">
+          <h2>Toppliste</h2>
+        </div>
+        <div id="toplist-content">
+          <h3>Topp Restauranter</h3>
+          <div id="top-restaurants" class="item-list"></div>
+          <h3>Topp Aktiviteter</h3>
+          <div id="top-activities" class="item-list"></div>
+        </div>
+      </section>
+
+      <!-- Søk -->
+      <section id="view-search" class="view">
+        <div class="view-header">
+          <h2>Søk</h2>
+        </div>
+        <div class="search-controls">
+          <div class="search-type-toggle">
+            <button class="toggle-btn active" data-search-type="restaurant">Restauranter</button>
+            <button class="toggle-btn" data-search-type="activity">Aktiviteter</button>
+          </div>
+          <div class="search-input-wrapper">
+            <input type="text" id="search-input" placeholder="Søk i Budapest..." autocomplete="off">
+            <button id="search-btn" class="icon-btn">🔍</button>
+          </div>
+        </div>
+        <div id="search-results" class="item-list">
+          <div class="empty-state">
+            <p>Søk etter restauranter eller aktiviteter i Budapest</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bunnmeny -->
+    <nav class="bottom-nav">
+      <button class="nav-btn active" data-view="restaurants">
+        <span class="nav-icon">🍽️</span>
+        <span class="nav-label">Restauranter</span>
+      </button>
+      <button class="nav-btn" data-view="activities">
+        <span class="nav-icon">🎯</span>
+        <span class="nav-label">Aktiviteter</span>
+      </button>
+      <button class="nav-btn" data-view="toplist">
+        <span class="nav-icon">🏆</span>
+        <span class="nav-label">Toppliste</span>
+      </button>
+      <button class="nav-btn" data-view="search">
+        <span class="nav-icon">🔍</span>
+        <span class="nav-label">Søk</span>
+      </button>
+    </nav>
+
+    <!-- Detalj-modal -->
+    <div id="detail-modal" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="modal-content">
+        <button class="modal-close">&times;</button>
+        <h2 id="modal-name"></h2>
+        <p id="modal-address" class="modal-address"></p>
+        <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne i kart</a>
+
+        <div class="modal-section">
+          <h3>Vurderinger</h3>
+          <div id="modal-ratings" class="modal-ratings"></div>
+        </div>
+
+        <div class="modal-section">
+          <h3>Din vurdering</h3>
+          <div id="modal-my-rating" class="star-rating-input"></div>
+        </div>
+
+        <div class="modal-section">
+          <h3>Notater</h3>
+          <textarea id="modal-notes" placeholder="Legg til et notat..." rows="3"></textarea>
+          <button id="save-notes-btn" class="btn btn-small">Lagre notat</button>
+        </div>
+
+        <button id="delete-item-btn" class="btn btn-danger">Slett fra listen</button>
+      </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="toast hidden"></div>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script type="module" src="js/firebase-config.js"></script>
+  <script type="module" src="js/firestore-service.js"></script>
+  <script type="module" src="js/places-search.js"></script>
+  <script type="module" src="js/app.js"></script>
+
+  <!-- Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .catch(err => console.warn('SW registrering feilet:', err));
+    }
+  </script>
+</body>
+</html>
