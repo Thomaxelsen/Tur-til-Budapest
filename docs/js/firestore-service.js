@@ -23,6 +23,7 @@ export async function addItem(item) {
     placeId: item.placeId || null,
     address: item.address || '',
     mapsUrl: item.mapsUrl || '',
+    tripAdvisorUrl: item.tripAdvisorUrl || '',
     addedBy: item.addedBy,
     addedAt: serverTimestamp(),
     ratings: {},

@@ -1,83 +1,101 @@
-// Stedssøk via Nominatim (OpenStreetMap) - helt gratis, ingen API-nøkkel
-// Brukspolicy: maks 1 forespørsel/sekund, User-Agent påkrevd
-// https://nominatim.org/release-docs/latest/api/Search/
+// Geoapify Places API (client-side friendly with CORS).
+// Create a project/API key at https://myprojects.geoapify.com/ and paste the key below.
+const GEOAPIFY_API_KEY = '80414bfb37ad4bb48ac56b2432a08173';
 
-const BUDAPEST_BBOX = '18.9,47.35,19.2,47.6'; // vest,sør,øst,nord
-const SEARCH_DELAY_MS = 1000; // Respekter rate-limit
+const BUDAPEST_RECT = '18.9,47.35,19.2,47.6'; // lon1,lat1,lon2,lat2
+const BUDAPEST_CENTER = '19.0402,47.4979'; // lon,lat
+const RESULT_LIMIT = '12';
 
-let lastSearchTime = 0;
+const TYPE_CATEGORIES = {
+  restaurant: 'catering.restaurant',
+  bar: 'catering.bar,catering.pub',
+  activity: 'tourism.attraction,tourism.sights,entertainment,leisure'
+};
 
 export async function searchPlaces(queryText, type) {
-  // Rate-limiting: vent hvis forrige søk var for nylig
-  const now = Date.now();
-  const timeSinceLastSearch = now - lastSearchTime;
-  if (timeSinceLastSearch < SEARCH_DELAY_MS) {
-    await new Promise(resolve => setTimeout(resolve, SEARCH_DELAY_MS - timeSinceLastSearch));
-  }
-  lastSearchTime = Date.now();
+  const trimmedQuery = (queryText || '').trim();
+  if (!trimmedQuery) return [];
 
-  // Bygg søkestreng med Budapest-kontekst
-  const searchQuery = `${queryText} Budapest`;
+  if (!GEOAPIFY_API_KEY || GEOAPIFY_API_KEY === 'SET_GEOAPIFY_API_KEY_HERE') {
+    throw createSearchError('missing_api_key', 'Geoapify API key mangler');
+  }
 
   const params = new URLSearchParams({
-    q: searchQuery,
-    format: 'json',
-    addressdetails: '1',
-    limit: '10',
-    viewbox: BUDAPEST_BBOX,
-    bounded: '0', // Foretrekk resultater innenfor viewbox, men vis også utenfor
-    'accept-language': 'no,en',
-    countrycodes: 'hu'
+    categories: TYPE_CATEGORIES[type] || TYPE_CATEGORIES.restaurant,
+    filter: `rect:${BUDAPEST_RECT}`,
+    bias: `proximity:${BUDAPEST_CENTER}`,
+    limit: RESULT_LIMIT,
+    lang: 'en',
+    name: trimmedQuery,
+    apiKey: GEOAPIFY_API_KEY
   });
 
-  // Legg til type-filter for restauranter
-  if (type === 'restaurant') {
-    // Nominatim støtter ikke direkte type-filter i fritekst-søk,
-    // men vi kan bruke amenity-parametre i spesialiserte søk.
-    // For fritekst bruker vi queryText som det er.
+  const url = `https://api.geoapify.com/v2/places?${params.toString()}`;
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw createSearchError('network', 'Nettverksfeil ved sok');
   }
 
-  const url = `https://nominatim.openstreetmap.org/search?${params}`;
-
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'TurplanleggerenBudapest/1.0'
-    }
-  });
-
   if (!response.ok) {
-    throw new Error(`Søk feilet: ${response.status}`);
+    if (response.status === 401 || response.status === 403) {
+      throw createSearchError('invalid_api_key', 'Ugyldig Geoapify API key');
+    }
+    if (response.status === 429) {
+      throw createSearchError('rate_limit', 'Geoapify rate limit eller kvote overskredet');
+    }
+    throw createSearchError('api_error', `Sok feilet (${response.status})`);
   }
 
   const data = await response.json();
+  const features = Array.isArray(data.features) ? data.features : [];
 
-  // Konverter til vårt format
-  return data.map(place => ({
-    placeId: `osm_${place.osm_type}_${place.osm_id}`,
-    name: place.name || place.display_name.split(',')[0],
-    address: formatAddress(place),
-    lat: parseFloat(place.lat),
-    lon: parseFloat(place.lon),
-    osmType: place.type,
-    category: place.category,
-    mapsUrl: `https://www.openstreetmap.org/${place.osm_type}/${place.osm_id}`
-  }));
+  return features.map(mapGeoapifyResult).filter(Boolean);
 }
 
-function formatAddress(place) {
-  const addr = place.address;
-  if (!addr) return place.display_name;
+function mapGeoapifyResult(feature) {
+  const p = feature?.properties || {};
+  const lat = Number(p.lat);
+  const lon = Number(p.lon);
+  const safeLat = Number.isFinite(lat) ? lat : null;
+  const safeLon = Number.isFinite(lon) ? lon : null;
+  const placeIdRaw = p.place_id || p.datasource?.raw?.osm_id || `${p.name || 'place'}_${safeLat || 'x'}_${safeLon || 'y'}`;
+  const name = p.name || p.address_line1 || (p.formatted ? p.formatted.split(',')[0] : 'Ukjent sted');
+  const address = p.address_line2 || p.formatted || '';
+  const category = normalizeCategoryLabel(p.categories?.[0] || '');
 
-  const parts = [];
-  if (addr.road) {
-    parts.push(addr.road + (addr.house_number ? ' ' + addr.house_number : ''));
-  }
-  if (addr.suburb || addr.city_district) {
-    parts.push(addr.suburb || addr.city_district);
-  }
-  if (addr.city || addr.town) {
-    parts.push(addr.city || addr.town);
-  }
+  const mapsQuery = safeLat !== null && safeLon !== null
+    ? `${safeLat},${safeLon}`
+    : `${name} Budapest`;
+  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
 
-  return parts.join(', ') || place.display_name.split(',').slice(0, 3).join(',');
+  return {
+    placeId: `geoapify_${placeIdRaw}`,
+    name,
+    address,
+    lat: safeLat,
+    lon: safeLon,
+    category,
+    mapsUrl: googleMapsUrl,
+    googleMapsUrl,
+    tripAdvisorUrl: `https://www.tripadvisor.com/Search?q=${encodeURIComponent(`${name} Budapest`)}`,
+    source: 'geoapify'
+  };
+}
+
+function normalizeCategoryLabel(category) {
+  if (!category) return '';
+  return category
+    .split('.')
+    .slice(-2)
+    .join(' / ')
+    .replace(/_/g, ' ');
+}
+
+function createSearchError(code, message) {
+  const error = new Error(message);
+  error.code = code;
+  return error;
 }

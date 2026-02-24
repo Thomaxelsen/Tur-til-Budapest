@@ -150,7 +150,7 @@
             <h3>🏨 Stories Boutique Hotel</h3>
             <p class="hotel-address">Király utca 26., Budapest, 1061 Ungarn</p>
             <p class="hotel-desc">Sjarmerende boutique-hotell i hjertet av Budapest, i den populære Király-gaten nær Andrássy-avenyen og det jødiske kvartalet.</p>
-            <a href="https://www.storiesbudapest.com/" class="hotel-link link-popup" data-url="https://www.storiesbudapest.com/">Besøk hotellets nettside ↗</a>
+            <a href="https://www.storiesbudapest.com/" class="hotel-link link-popup-trigger" data-url="https://www.storiesbudapest.com/" data-title="Stories Boutique Hotel">Besøk hotellets nettside ↗</a>
           </div>
           <div class="hotel-map">
             <iframe
@@ -361,7 +361,10 @@
         <div class="modal-body">
           <h2 id="modal-name"></h2>
           <p id="modal-address" class="modal-address"></p>
-          <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne lenke</a>
+          <div class="modal-links">
+            <a id="modal-maps-link" href="#" class="maps-link link-popup-trigger hidden" data-title="">Google Maps</a>
+            <a id="modal-tripadvisor-link" href="#" class="maps-link link-popup-trigger hidden" data-title="">TripAdvisor</a>
+          </div>
 
           <div class="modal-section">
             <h3>Vurderinger</h3>
@@ -395,6 +398,8 @@
             <button id="link-popup-close" class="modal-close">&times;</button>
           </div>
         </div>
+        <div id="link-popup-status" class="link-popup-status hidden">Laster side...</div>
+        <div id="link-popup-hint" class="link-popup-hint">Hvis siden ikke vises her, bruk "Åpne i ny fane".</div>
         <iframe id="link-popup-iframe" src="" frameborder="0" loading="lazy"></iframe>
       </div>
     </div>

@@ -127,15 +127,22 @@ function setupEventListeners() {
   document.querySelector('#detail-modal .modal-backdrop').addEventListener('click', closeModal);
   document.querySelector('#detail-modal .modal-close').addEventListener('click', closeModal);
 
-  // Link-popup
-  document.querySelectorAll('.link-popup').forEach(link => {
-    link.addEventListener('click', (e) => {
-      e.preventDefault();
-      openLinkPopup(link.dataset.url || link.href, link.textContent.trim());
-    });
+  // Link-popup (delegert for alle app-lenker vi markerer)
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('.link-popup-trigger');
+    if (!trigger) return;
+    if (trigger.id === 'link-popup-external') return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    openLinkPopup(trigger.dataset.url || trigger.href, trigger.dataset.title || trigger.textContent.trim());
   });
   document.getElementById('link-popup-close').addEventListener('click', closeLinkPopup);
   document.querySelector('#link-popup .modal-backdrop').addEventListener('click', closeLinkPopup);
+  document.getElementById('link-popup-iframe').addEventListener('load', () => {
+    const status = document.getElementById('link-popup-status');
+    if (status) status.classList.add('hidden');
+  });
 
   // Lagre notat
   document.getElementById('save-notes-btn').addEventListener('click', saveNotes);
@@ -222,7 +229,7 @@ function renderGroupedList(containerId, items, type) {
   // Event listeners for kort
   container.querySelectorAll('.item-card').forEach(card => {
     card.addEventListener('click', (e) => {
-      if (e.target.closest('.inline-rating')) return;
+      if (e.target.closest('.inline-rating') || e.target.closest('.link-popup-trigger')) return;
       openModal(card.dataset.id);
     });
   });
@@ -243,7 +250,8 @@ function renderGroupedList(containerId, items, type) {
 
 function createItemCard(item) {
   const myRating = item.ratings?.[currentUser] || 0;
-  const hasLink = item.mapsUrl && !item.placeId;
+  const hasMapsLink = !!item.mapsUrl;
+  const hasTripAdvisorLink = !!item.tripAdvisorUrl;
 
   return `
     <div class="item-card" data-id="${item.id}">
@@ -258,7 +266,12 @@ function createItemCard(item) {
         ` : ''}
       </div>
       ${item.address ? `<div class="item-card-address">${escapeHtml(item.address)}</div>` : ''}
-      ${hasLink ? `<a href="${escapeHtml(item.mapsUrl)}" target="_blank" rel="noopener" class="item-card-link" onclick="event.stopPropagation()">Åpne lenke ↗</a>` : ''}
+      ${(hasMapsLink || hasTripAdvisorLink) ? `
+        <div class="item-card-links">
+          ${hasMapsLink ? `<a href="${escapeHtml(item.mapsUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.mapsUrl)}" data-title="${escapeHtml(item.name)} - Google Maps">Maps</a>` : ''}
+          ${hasTripAdvisorLink ? `<a href="${escapeHtml(item.tripAdvisorUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.tripAdvisorUrl)}" data-title="${escapeHtml(item.name)} - TripAdvisor">TripAdvisor</a>` : ''}
+        </div>
+      ` : ''}
       <div class="item-card-meta">
         <span></span>
         <div class="inline-rating">
@@ -354,49 +367,32 @@ async function performInlineSearch(input, type, resultsContainer) {
     }
 
     const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
+    renderSearchResults(resultsContainer, results, existChecks);
 
-    resultsContainer.innerHTML = results.map((result, index) => {
-      const alreadyAdded = existChecks[index];
-      return `
-        <div class="search-result-card">
-          <div class="search-result-header">
-            <span class="search-result-name">${escapeHtml(result.name)}</span>
-          </div>
-          <div class="search-result-address">${escapeHtml(result.address)}</div>
-          <div class="search-result-actions">
-            <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
-              ${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}
-            </button>
-          </div>
-        </div>`;
-    }).join('');
-
-    resultsContainer.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const result = results[parseInt(btn.dataset.index)];
-        btn.disabled = true;
-        btn.textContent = 'Legger til...';
-        try {
-          await addItem({
-            name: result.name,
-            type: type,
-            placeId: result.placeId,
-            address: result.address,
-            mapsUrl: result.mapsUrl,
-            addedBy: currentUser
-          });
-          btn.textContent = 'Lagt til!';
-          showToast(`${result.name} lagt til`);
-        } catch (error) {
-          btn.disabled = false;
-          btn.textContent = 'Legg til';
-          showToast('Kunne ikke legge til');
-        }
-      });
+    wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
+      btn.disabled = true;
+      btn.textContent = 'Legger til...';
+      try {
+        await addItem({
+          name: result.name,
+          type,
+          placeId: result.placeId,
+          address: result.address,
+          mapsUrl: result.googleMapsUrl || result.mapsUrl,
+          tripAdvisorUrl: result.tripAdvisorUrl || '',
+          addedBy: currentUser
+        });
+        btn.textContent = 'Lagt til!';
+        showToast(`${result.name} lagt til`);
+      } catch (error) {
+        btn.disabled = false;
+        btn.textContent = 'Legg til';
+        showToast('Kunne ikke legge til');
+      }
     });
   } catch (error) {
     console.error('Søkefeil:', error);
-    resultsContainer.innerHTML = '<div class="empty-state"><p>Søket feilet. Prøv igjen.</p></div>';
+    resultsContainer.innerHTML = `<div class="empty-state"><p>${escapeHtml(getSearchErrorMessage(error))}</p></div>`;
   }
 }
 
@@ -457,33 +453,13 @@ async function performSearch() {
     }
 
     const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
-
-    resultsContainer.innerHTML = results.map((result, index) => {
-      const alreadyAdded = existChecks[index];
-      return `
-        <div class="search-result-card">
-          <div class="search-result-header">
-            <span class="search-result-name">${escapeHtml(result.name)}</span>
-          </div>
-          <div class="search-result-address">${escapeHtml(result.address)}</div>
-          ${result.osmType ? `<span class="search-result-type">${escapeHtml(result.osmType)}</span>` : ''}
-          <div class="search-result-actions">
-            <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
-              ${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}
-            </button>
-          </div>
-        </div>`;
-    }).join('');
-
-    resultsContainer.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const result = results[parseInt(btn.dataset.index)];
-        await handleAddFromSearch(result, btn);
-      });
+    renderSearchResults(resultsContainer, results, existChecks);
+    wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
+      await handleAddFromSearch(result, btn);
     });
   } catch (error) {
     console.error('Søkefeil:', error);
-    resultsContainer.innerHTML = '<div class="empty-state"><p>Søket feilet. Prøv igjen.</p></div>';
+    resultsContainer.innerHTML = `<div class="empty-state"><p>${escapeHtml(getSearchErrorMessage(error))}</p></div>`;
   }
 }
 
@@ -497,7 +473,8 @@ async function handleAddFromSearch(result, button) {
       type: currentSearchType,
       placeId: result.placeId,
       address: result.address,
-      mapsUrl: result.mapsUrl,
+      mapsUrl: result.googleMapsUrl || result.mapsUrl,
+      tripAdvisorUrl: result.tripAdvisorUrl || '',
       addedBy: currentUser
     });
 
@@ -508,6 +485,55 @@ async function handleAddFromSearch(result, button) {
     button.disabled = false;
     button.textContent = 'Legg til';
     showToast('Kunne ikke legge til. Prøv igjen.');
+  }
+}
+
+function renderSearchResults(container, results, existChecks) {
+  container.innerHTML = results.map((result, index) => buildSearchResultCard(result, index, !!existChecks[index])).join('');
+}
+
+function buildSearchResultCard(result, index, alreadyAdded) {
+  const mapsUrl = result.googleMapsUrl || result.mapsUrl;
+  return `
+    <div class="search-result-card">
+      <div class="search-result-header">
+        <span class="search-result-name">${escapeHtml(result.name)}</span>
+      </div>
+      <div class="search-result-address">${escapeHtml(result.address || '')}</div>
+      ${result.category ? `<span class="search-result-type">${escapeHtml(result.category)}</span>` : ''}
+      <div class="search-result-links">
+        ${mapsUrl ? `<a href="${escapeHtml(mapsUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(mapsUrl)}" data-title="${escapeHtml(result.name)} - Google Maps">Google Maps</a>` : ''}
+        ${result.tripAdvisorUrl ? `<a href="${escapeHtml(result.tripAdvisorUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(result.tripAdvisorUrl)}" data-title="${escapeHtml(result.name)} - TripAdvisor">TripAdvisor</a>` : ''}
+      </div>
+      <div class="search-result-actions">
+        <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
+          ${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}
+        </button>
+      </div>
+    </div>`;
+}
+
+function wireSearchAddButtons(container, results, onAdd) {
+  container.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const result = results[parseInt(btn.dataset.index)];
+      await onAdd(result, btn);
+    });
+  });
+}
+
+function getSearchErrorMessage(error) {
+  switch (error?.code) {
+    case 'missing_api_key':
+      return 'Geoapify API-key mangler. Opprett prosjekt og lim inn nokkelen i docs/js/places-search.js.';
+    case 'invalid_api_key':
+      return 'Geoapify API-key er ugyldig. Sjekk nokkelen i docs/js/places-search.js.';
+    case 'rate_limit':
+      return 'Geoapify kvote/rate limit er brukt opp. Prov igjen senere.';
+    case 'network':
+      return 'Nettverksfeil. Sjekk internett og prov igjen.';
+    default:
+      return 'Soket feilet. Prov igjen.';
   }
 }
 
@@ -523,12 +549,23 @@ function openModal(itemId) {
   document.getElementById('modal-address').textContent = item.address || '';
 
   const mapsLink = document.getElementById('modal-maps-link');
+  const tripAdvisorLink = document.getElementById('modal-tripadvisor-link');
   if (item.mapsUrl) {
-    mapsLink.href = item.mapsUrl;
-    mapsLink.textContent = item.placeId ? 'Åpne i kart' : 'Åpne lenke';
+    mapsLink.dataset.url = item.mapsUrl;
+    mapsLink.dataset.title = `${item.name} - Google Maps`;
     mapsLink.classList.remove('hidden');
   } else {
     mapsLink.classList.add('hidden');
+  }
+
+  if (tripAdvisorLink) {
+    if (item.tripAdvisorUrl) {
+      tripAdvisorLink.dataset.url = item.tripAdvisorUrl;
+      tripAdvisorLink.dataset.title = `${item.name} - TripAdvisor`;
+      tripAdvisorLink.classList.remove('hidden');
+    } else {
+      tripAdvisorLink.classList.add('hidden');
+    }
   }
 
   // Alle brukeres vurderinger
@@ -573,15 +610,25 @@ function closeModal() {
 }
 
 function openLinkPopup(url, title) {
+  const safeUrl = (url || '').trim();
+  if (!safeUrl || safeUrl === '#') return;
+
   document.getElementById('link-popup-title').textContent = title;
-  document.getElementById('link-popup-iframe').src = url;
-  document.getElementById('link-popup-external').href = url;
+  document.getElementById('link-popup-external').href = safeUrl;
+  const status = document.getElementById('link-popup-status');
+  if (status) {
+    status.textContent = 'Laster side...';
+    status.classList.remove('hidden');
+  }
+  document.getElementById('link-popup-iframe').src = safeUrl;
   document.getElementById('link-popup').classList.remove('hidden');
 }
 
 function closeLinkPopup() {
   document.getElementById('link-popup').classList.add('hidden');
   document.getElementById('link-popup-iframe').src = '';
+  const status = document.getElementById('link-popup-status');
+  if (status) status.classList.add('hidden');
 }
 
 async function saveNotes() {
