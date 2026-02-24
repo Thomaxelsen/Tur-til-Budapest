@@ -155,6 +155,7 @@ function renderGroupedList(containerId, items, type) {
 
     html += `<div class="user-section">`;
     html += `<div class="user-section-header">
+      <img src="images/${user}.jpg" alt="${escapeHtml(user)}" class="user-avatar">
       ${escapeHtml(user)} sine ${typeName}
       <span class="user-section-count">${userItems.length}</span>
     </div>`;

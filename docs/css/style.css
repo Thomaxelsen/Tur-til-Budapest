@@ -326,6 +326,15 @@ body::after {
   gap: 8px;
 }
 
+.user-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 .user-section-count {
   font-size: 12px;
   font-weight: 500;
