@@ -467,12 +467,21 @@ async function handleManualAdd(form, type) {
   addBtn.textContent = 'Legger til...';
 
   try {
+    const address = addressInput.value.trim();
+    const manualUrl = urlInput.value.trim();
+    const { mapsUrl, tripAdvisorUrl } = buildManualItemLinks({
+      name,
+      address,
+      manualUrl
+    });
+
     await addItem({
       name: name,
       type: type,
       placeId: null,
-      address: addressInput.value.trim(),
-      mapsUrl: urlInput.value.trim(),
+      address,
+      mapsUrl,
+      tripAdvisorUrl,
       addedBy: currentUser
     });
 
@@ -486,6 +495,48 @@ async function handleManualAdd(form, type) {
     addBtn.disabled = false;
     addBtn.textContent = 'Legg til';
   }
+}
+
+function buildManualItemLinks({ name, address, manualUrl }) {
+  const url = (manualUrl || '').trim();
+  const lowerUrl = url.toLowerCase();
+  const generatedMapsUrl = buildManualGoogleMapsUrl(name, address);
+
+  if (!url) {
+    return {
+      mapsUrl: generatedMapsUrl,
+      tripAdvisorUrl: ''
+    };
+  }
+
+  if (lowerUrl.includes('tripadvisor.')) {
+    return {
+      mapsUrl: generatedMapsUrl,
+      tripAdvisorUrl: url
+    };
+  }
+
+  return {
+    mapsUrl: url,
+    tripAdvisorUrl: ''
+  };
+}
+
+function buildManualGoogleMapsUrl(name, address) {
+  const cleanName = (name || '').trim();
+  const cleanAddress = (address || '').trim();
+
+  let query = '';
+  if (cleanName && cleanAddress) {
+    query = `${cleanName}, ${cleanAddress}, Budapest`;
+  } else if (cleanAddress) {
+    query = `${cleanAddress}, Budapest`;
+  } else if (cleanName) {
+    query = `${cleanName}, Budapest`;
+  }
+
+  if (!query) return '';
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
 }
 
 // === Dedikert søk (søk-fanen) ===
