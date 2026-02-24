@@ -3,7 +3,7 @@ import { searchPlaces } from './places-search.js';
 
 // === State ===
 let currentUser = localStorage.getItem('turplan_user') || null;
-let currentView = 'restaurants';
+let currentView = 'home';
 let currentSearchType = 'restaurant';
 let allItems = [];
 let itineraryItems = [];
@@ -34,6 +34,7 @@ function showApp() {
   document.getElementById('app').classList.remove('hidden');
   document.getElementById('current-user-name').textContent = currentUser;
   startListeners();
+  switchView('home');
 }
 
 function selectUser(userName) {
@@ -61,6 +62,11 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
 
+  // Hjem-side knapper
+  document.querySelectorAll('.home-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchView(btn.dataset.view));
+  });
+
   // Søk type toggle (dedikert søk-fane)
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -71,10 +77,14 @@ function setupEventListeners() {
   });
 
   // Dedikert søk
-  document.getElementById('search-btn').addEventListener('click', performSearch);
-  document.getElementById('search-input').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') performSearch();
-  });
+  const searchBtn = document.getElementById('search-btn');
+  const searchInput = document.getElementById('search-input');
+  if (searchBtn) searchBtn.addEventListener('click', performSearch);
+  if (searchInput) {
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') performSearch();
+    });
+  }
 
   // Inline søk på listesidene
   document.querySelectorAll('.inline-search').forEach(container => {
@@ -170,9 +180,13 @@ function setupEventListeners() {
 function switchView(view) {
   currentView = view;
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-  document.getElementById(`view-${view}`).classList.add('active');
+  const targetView = document.getElementById(`view-${view}`);
+  if (!targetView) return;
+  targetView.classList.add('active');
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`[data-view="${view}"]`).classList.add('active');
+  const navBtn = document.querySelector(`.nav-btn[data-view="${view}"]`);
+  if (navBtn) navBtn.classList.add('active');
+  playHomeIntroIfNeeded(view);
 
   // Tøm søkeresultater ved visningsbytte
   clearAllInlineSearchResults({ clearInputs: true });
@@ -183,6 +197,23 @@ function switchView(view) {
     stopSearchLoading(searchResults);
     searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter, aktiviteter eller barer i Budapest</p></div>';
   }
+}
+
+function playHomeIntroIfNeeded(view) {
+  const homeView = document.getElementById('view-home');
+  if (!homeView) return;
+
+  if (view !== 'home') {
+    homeView.classList.remove('home-intro-active');
+    return;
+  }
+
+  homeView.classList.remove('home-intro-active');
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      homeView.classList.add('home-intro-active');
+    });
+  });
 }
 
 // === Firestore Listeners ===

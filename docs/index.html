@@ -36,8 +36,25 @@
     </header>
 
     <main id="main-content">
+      <!-- Hjem -->
+      <section id="view-home" class="view active home-view">
+        <div class="home-hero">
+          <div class="home-hero-overlay"></div>
+          <div class="home-hero-content">
+            <h2 class="home-title">Tur til Budapest 2026 - side for planlegging</h2>
+            <div class="home-actions">
+              <button class="home-nav-btn" data-view="restaurants"><span class="home-nav-icon">🍽️</span><span>Restauranter</span></button>
+              <button class="home-nav-btn" data-view="activities"><span class="home-nav-icon">🎯</span><span>Aktiviteter</span></button>
+              <button class="home-nav-btn" data-view="bars"><span class="home-nav-icon">🍸</span><span>Barer</span></button>
+              <button class="home-nav-btn" data-view="toplist"><span class="home-nav-icon">🏆</span><span>Topp</span></button>
+              <button class="home-nav-btn" data-view="itinerary"><span class="home-nav-icon">📋</span><span>Reiseplan</span></button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Restauranter -->
-      <section id="view-restaurants" class="view active">
+      <section id="view-restaurants" class="view">
         <div class="view-header">
           <h2>Restauranter</h2>
         </div>
@@ -301,33 +318,15 @@
         </div>
       </section>
 
-      <!-- Søk -->
-      <section id="view-search" class="view">
-        <div class="view-header">
-          <h2>Søk</h2>
-        </div>
-        <div class="search-controls">
-          <div class="search-type-toggle">
-            <button class="toggle-btn active" data-search-type="restaurant">Restauranter</button>
-            <button class="toggle-btn" data-search-type="activity">Aktiviteter</button>
-            <button class="toggle-btn" data-search-type="bar">Barer</button>
-          </div>
-          <div class="search-input-wrapper">
-            <input type="text" id="search-input" placeholder="Søk i Budapest..." autocomplete="off">
-            <button id="search-btn" class="icon-btn">🔍</button>
-          </div>
-        </div>
-        <div id="search-results" class="item-list">
-          <div class="empty-state">
-            <p>Søk etter restauranter, aktiviteter eller barer i Budapest</p>
-          </div>
-        </div>
-      </section>
     </main>
 
     <!-- Bunnmeny -->
     <nav class="bottom-nav">
-      <button class="nav-btn active" data-view="restaurants">
+      <button class="nav-btn active" data-view="home">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Hjem</span>
+      </button>
+      <button class="nav-btn" data-view="restaurants">
         <span class="nav-icon">🍽️</span>
         <span class="nav-label">Restauranter</span>
       </button>
@@ -346,10 +345,6 @@
       <button class="nav-btn" data-view="itinerary">
         <span class="nav-icon">📋</span>
         <span class="nav-label">Reiseplan</span>
-      </button>
-      <button class="nav-btn" data-view="search">
-        <span class="nav-icon">🔍</span>
-        <span class="nav-label">Søk</span>
       </button>
     </nav>
 
