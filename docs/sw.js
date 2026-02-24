@@ -1,4 +1,4 @@
-const CACHE_NAME = 'turplan-v2';
+const CACHE_NAME = 'turplan-v3';
 const STATIC_ASSETS = [
   'index.html',
   'css/style.css',

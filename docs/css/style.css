@@ -36,9 +36,9 @@ html, body {
 }
 
 body {
-  background-image: url('https://images.unsplash.com/photo-1549923746-c502d488b3ea?w=1920&q=80');
+  background-image: url('../images/IMG_2810.JPEG');
   background-size: cover;
-  background-position: center;
+  background-position: center top;
   background-attachment: fixed;
 }
 
@@ -300,17 +300,26 @@ body::after {
   cursor: pointer;
 }
 
-/* === User section (grouped lists) === */
+/* === User sections grid === */
+.user-sections-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
 .user-section {
-  margin-bottom: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 16px;
 }
 
 .user-section-header {
   font-size: 15px;
   font-weight: 700;
   color: var(--accent);
-  margin-bottom: 10px;
-  padding-bottom: 6px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
@@ -328,7 +337,7 @@ body::after {
 
 .user-section-empty {
   text-align: center;
-  padding: 20px 16px;
+  padding: 24px 16px;
   color: var(--text-secondary);
   font-size: 13px;
   font-style: italic;
@@ -912,11 +921,17 @@ body::after {
 }
 
 /* === Responsive === */
-@media (min-width: 600px) {
+@media (min-width: 768px) {
   #main-content {
-    max-width: 600px;
+    max-width: 900px;
     margin-left: auto;
     margin-right: auto;
+  }
+
+  .user-sections-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
   }
 
   .modal-content {
@@ -926,5 +941,15 @@ body::after {
 
   .modal {
     align-items: center;
+  }
+}
+
+@media (min-width: 1200px) {
+  #main-content {
+    max-width: 1100px;
+  }
+
+  .user-sections-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }

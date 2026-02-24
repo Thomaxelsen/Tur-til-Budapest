@@ -147,7 +147,7 @@ function renderGroupedList(containerId, items, type) {
   const container = document.getElementById(containerId);
   const typeName = type === 'restaurant' ? 'restauranter' : 'aktiviteter';
 
-  let html = '';
+  let html = '<div class="user-sections-grid">';
   USERS.forEach(user => {
     const userItems = items
       .filter(i => i.addedBy === user)
@@ -168,6 +168,7 @@ function renderGroupedList(containerId, items, type) {
     }
     html += `</div>`;
   });
+  html += '</div>';
 
   container.innerHTML = html;
 
