@@ -17,6 +17,19 @@ const TYPE_CATEGORIES = {
   activity: 'tourism.attraction,tourism.sights,entertainment,leisure'
 };
 
+const ACTIVITY_QUERY_TRANSLATIONS = {
+  museum: ['múzeum', 'muzeum'],
+  art: ['művészet', 'muveszet', 'galéria', 'galeria', 'gallery'],
+  spa: ['fürdő', 'furdo', 'bath', 'thermal bath'],
+  bath: ['fürdő', 'furdo', 'thermal bath', 'spa'],
+  thermal: ['termál', 'thermal bath', 'fürdő', 'furdo'],
+  castle: ['vár', 'var'],
+  church: ['templom', 'basilica'],
+  market: ['piac', 'market hall'],
+  bridge: ['híd', 'hid'],
+  viewpoint: ['kilátó', 'kilato', 'view point']
+};
+
 export async function searchPlaces(queryText, type) {
   const trimmedQuery = (queryText || '').trim();
   if (!trimmedQuery) return [];
@@ -31,39 +44,28 @@ export async function searchPlaces(queryText, type) {
     return cached;
   }
 
-  const params = new URLSearchParams({
-    categories: TYPE_CATEGORIES[type] || TYPE_CATEGORIES.restaurant,
-    filter: `rect:${BUDAPEST_RECT}`,
-    bias: `proximity:${BUDAPEST_CENTER}`,
-    limit: RESULT_LIMIT,
-    lang: 'en',
-    text: `${trimmedQuery} Budapest`,
-    apiKey: GEOAPIFY_API_KEY
-  });
+  // Precision first: name search gives better quality for restaurants/bars.
+  let mappedResults = await fetchGeoapifyPlaces(trimmedQuery, type, 'name');
 
-  const url = `https://api.geoapify.com/v2/places?${params.toString()}`;
+  // Fallback for activities: use broader text search + a few Hungarian synonyms.
+  if (mappedResults.length === 0 && type === 'activity') {
+    const seen = new Set();
+    const merged = [];
+    const fallbackQueries = [trimmedQuery, ...getActivityFallbackQueries(trimmedQuery)];
 
-  let response;
-  try {
-    response = await fetch(url);
-  } catch {
-    throw createSearchError('network', 'Nettverksfeil ved sok');
+    for (const fallbackQuery of fallbackQueries) {
+      const batch = await fetchGeoapifyPlaces(fallbackQuery, type, 'text');
+      for (const item of batch) {
+        if (seen.has(item.placeId)) continue;
+        seen.add(item.placeId);
+        merged.push(item);
+      }
+      if (merged.length >= Number(RESULT_LIMIT)) break;
+    }
+
+    mappedResults = merged.slice(0, Number(RESULT_LIMIT));
   }
 
-  if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      throw createSearchError('invalid_api_key', 'Ugyldig Geoapify API key');
-    }
-    if (response.status === 429) {
-      throw createSearchError('rate_limit', 'Geoapify rate limit eller kvote overskredet');
-    }
-    throw createSearchError('api_error', `Sok feilet (${response.status})`);
-  }
-
-  const data = await response.json();
-  const features = Array.isArray(data.features) ? data.features : [];
-
-  const mappedResults = features.map(mapGeoapifyResult).filter(Boolean);
   setCachedSearchResults(cacheKey, mappedResults);
   return mappedResults;
 }
@@ -138,6 +140,52 @@ function buildPlaceQuery(name, address) {
     return `${cleanName}, Budapest`;
   }
   return '';
+}
+
+async function fetchGeoapifyPlaces(queryText, type, mode = 'name') {
+  const params = new URLSearchParams({
+    categories: TYPE_CATEGORIES[type] || TYPE_CATEGORIES.restaurant,
+    filter: `rect:${BUDAPEST_RECT}`,
+    bias: `proximity:${BUDAPEST_CENTER}`,
+    limit: RESULT_LIMIT,
+    lang: 'en',
+    apiKey: GEOAPIFY_API_KEY
+  });
+
+  if (mode === 'text') {
+    params.set('text', `${queryText} Budapest`);
+  } else {
+    params.set('name', queryText);
+  }
+
+  const url = `https://api.geoapify.com/v2/places?${params.toString()}`;
+
+  let response;
+  try {
+    response = await fetch(url);
+  } catch {
+    throw createSearchError('network', 'Nettverksfeil ved sok');
+  }
+
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw createSearchError('invalid_api_key', 'Ugyldig Geoapify API key');
+    }
+    if (response.status === 429) {
+      throw createSearchError('rate_limit', 'Geoapify rate limit eller kvote overskredet');
+    }
+    throw createSearchError('api_error', `Sok feilet (${response.status})`);
+  }
+
+  const data = await response.json();
+  const features = Array.isArray(data.features) ? data.features : [];
+  return features.map(mapGeoapifyResult).filter(Boolean);
+}
+
+function getActivityFallbackQueries(queryText) {
+  const normalized = (queryText || '').trim().toLowerCase();
+  const extras = ACTIVITY_QUERY_TRANSLATIONS[normalized] || [];
+  return [...new Set(extras)];
 }
 
 function createSearchError(code, message) {
