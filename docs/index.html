@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#2d7d6f">
+  <meta name="theme-color" content="#0e1a2b">
   <meta name="description" content="Turplanlegger for Budapest">
   <title>Budapest 2026</title>
   <link rel="stylesheet" href="css/style.css">
@@ -11,7 +11,7 @@
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🇭🇺</text></svg>">
 </head>
 <body>
-  <!-- Brukervelger (vises hvis ingen bruker er valgt) -->
+  <!-- Brukervelger -->
   <div id="user-select-screen" class="screen">
     <div class="user-select-card">
       <h1>Budapest 2026</h1>
@@ -27,7 +27,6 @@
 
   <!-- Hovedapp -->
   <div id="app" class="screen hidden">
-    <!-- Topbar -->
     <header class="topbar">
       <h1>Budapest 2026</h1>
       <div class="topbar-right">
@@ -36,19 +35,30 @@
       </div>
     </header>
 
-    <!-- Innhold -->
     <main id="main-content">
       <!-- Restauranter -->
       <section id="view-restaurants" class="view active">
         <div class="view-header">
           <h2>Restauranter</h2>
         </div>
-        <div id="restaurant-list" class="item-list">
-          <div class="empty-state">
-            <p>Ingen restauranter lagt til ennå.</p>
-            <p>Bruk søk-fanen for å finne steder!</p>
+        <div class="inline-search" data-type="restaurant">
+          <div class="inline-search-row">
+            <input type="text" class="inline-search-input" placeholder="Søk etter restaurant i Budapest..." autocomplete="off">
+            <button class="inline-search-btn">🔍</button>
+            <button class="btn-manual-add">+ Manuelt</button>
           </div>
+          <div class="manual-add-form hidden">
+            <input type="text" class="manual-name" placeholder="Navn (påkrevd)">
+            <input type="text" class="manual-address" placeholder="Adresse (valgfritt)">
+            <input type="url" class="manual-url" placeholder="Lenke / URL (valgfritt)">
+            <div class="manual-form-actions">
+              <button class="btn-cancel">Avbryt</button>
+              <button class="btn-add">Legg til</button>
+            </div>
+          </div>
+          <div class="inline-search-results"></div>
         </div>
+        <div id="restaurant-list" class="item-list"></div>
       </section>
 
       <!-- Aktiviteter -->
@@ -56,12 +66,24 @@
         <div class="view-header">
           <h2>Aktiviteter</h2>
         </div>
-        <div id="activity-list" class="item-list">
-          <div class="empty-state">
-            <p>Ingen aktiviteter lagt til ennå.</p>
-            <p>Bruk søk-fanen for å finne steder!</p>
+        <div class="inline-search" data-type="activity">
+          <div class="inline-search-row">
+            <input type="text" class="inline-search-input" placeholder="Søk etter aktivitet i Budapest..." autocomplete="off">
+            <button class="inline-search-btn">🔍</button>
+            <button class="btn-manual-add">+ Manuelt</button>
           </div>
+          <div class="manual-add-form hidden">
+            <input type="text" class="manual-name" placeholder="Navn (påkrevd)">
+            <input type="text" class="manual-address" placeholder="Adresse (valgfritt)">
+            <input type="url" class="manual-url" placeholder="Lenke / URL (valgfritt)">
+            <div class="manual-form-actions">
+              <button class="btn-cancel">Avbryt</button>
+              <button class="btn-add">Legg til</button>
+            </div>
+          </div>
+          <div class="inline-search-results"></div>
         </div>
+        <div id="activity-list" class="item-list"></div>
       </section>
 
       <!-- Toppliste -->
@@ -127,7 +149,7 @@
         <button class="modal-close">&times;</button>
         <h2 id="modal-name"></h2>
         <p id="modal-address" class="modal-address"></p>
-        <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne i kart</a>
+        <a id="modal-maps-link" href="#" target="_blank" rel="noopener" class="maps-link">Åpne lenke</a>
 
         <div class="modal-section">
           <h3>Vurderinger</h3>
@@ -149,17 +171,14 @@
       </div>
     </div>
 
-    <!-- Toast -->
     <div id="toast" class="toast hidden"></div>
   </div>
 
-  <!-- Firebase SDK -->
   <script type="module" src="js/firebase-config.js"></script>
   <script type="module" src="js/firestore-service.js"></script>
   <script type="module" src="js/places-search.js"></script>
   <script type="module" src="js/app.js"></script>
 
-  <!-- Service Worker -->
   <script>
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js')

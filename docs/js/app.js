@@ -17,7 +17,6 @@ document.addEventListener('DOMContentLoaded', () => {
   } else {
     showUserSelect();
   }
-
   setupEventListeners();
 });
 
@@ -59,7 +58,7 @@ function setupEventListeners() {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
 
-  // Søk type toggle
+  // Søk type toggle (dedikert søk-fane)
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -68,10 +67,43 @@ function setupEventListeners() {
     });
   });
 
-  // Søk
+  // Dedikert søk
   document.getElementById('search-btn').addEventListener('click', performSearch);
   document.getElementById('search-input').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') performSearch();
+  });
+
+  // Inline søk på listesidene
+  document.querySelectorAll('.inline-search').forEach(container => {
+    const type = container.dataset.type;
+    const input = container.querySelector('.inline-search-input');
+    const btn = container.querySelector('.inline-search-btn');
+    const resultsDiv = container.querySelector('.inline-search-results');
+
+    btn.addEventListener('click', () => performInlineSearch(input, type, resultsDiv));
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') performInlineSearch(input, type, resultsDiv);
+    });
+  });
+
+  // Manuell tillegging
+  document.querySelectorAll('.inline-search').forEach(container => {
+    const type = container.dataset.type;
+    const manualBtn = container.querySelector('.btn-manual-add');
+    const form = container.querySelector('.manual-add-form');
+    const cancelBtn = form.querySelector('.btn-cancel');
+    const addBtn = form.querySelector('.btn-add');
+
+    manualBtn.addEventListener('click', () => {
+      form.classList.toggle('hidden');
+    });
+
+    cancelBtn.addEventListener('click', () => {
+      form.classList.add('hidden');
+      form.querySelectorAll('input').forEach(i => i.value = '');
+    });
+
+    addBtn.addEventListener('click', () => handleManualAdd(form, type));
   });
 
   // Modal lukk
@@ -88,10 +120,8 @@ function setupEventListeners() {
 // === Navigasjon ===
 function switchView(view) {
   currentView = view;
-
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
   document.getElementById(`view-${view}`).classList.add('active');
-
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   document.querySelector(`[data-view="${view}"]`).classList.add('active');
 }
@@ -99,11 +129,11 @@ function switchView(view) {
 // === Firestore Listeners ===
 function startListeners() {
   listenToItems('restaurant', (items) => {
-    renderItemList('restaurant-list', items, 'restaurant');
+    renderGroupedList('restaurant-list', items, 'restaurant');
   });
 
   listenToItems('activity', (items) => {
-    renderItemList('activity-list', items, 'activity');
+    renderGroupedList('activity-list', items, 'activity');
   });
 
   listenToAllItems((items) => {
@@ -112,25 +142,38 @@ function startListeners() {
   });
 }
 
-// === Rendering ===
-function renderItemList(containerId, items, type) {
+// === Rendering: Grouped by user ===
+function renderGroupedList(containerId, items, type) {
   const container = document.getElementById(containerId);
+  const typeName = type === 'restaurant' ? 'restauranter' : 'aktiviteter';
 
-  if (items.length === 0) {
-    container.innerHTML = `
-      <div class="empty-state">
-        <p>Ingen ${type === 'restaurant' ? 'restauranter' : 'aktiviteter'} lagt til ennå.</p>
-        <p>Bruk søk-fanen for å finne steder!</p>
-      </div>`;
-    return;
-  }
+  let html = '';
+  USERS.forEach(user => {
+    const userItems = items
+      .filter(i => i.addedBy === user)
+      .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
 
-  container.innerHTML = items.map(item => createItemCard(item)).join('');
+    html += `<div class="user-section">`;
+    html += `<div class="user-section-header">
+      ${escapeHtml(user)} sine ${typeName}
+      <span class="user-section-count">${userItems.length}</span>
+    </div>`;
+
+    if (userItems.length === 0) {
+      html += `<div class="user-section-empty">Ingen ${typeName} lagt til ennå</div>`;
+    } else {
+      html += `<div class="item-list">`;
+      html += userItems.map(item => createItemCard(item)).join('');
+      html += `</div>`;
+    }
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
 
   // Event listeners for kort
   container.querySelectorAll('.item-card').forEach(card => {
     card.addEventListener('click', (e) => {
-      // Ikke åpne modal hvis man trykker på stjerner
       if (e.target.closest('.inline-rating')) return;
       openModal(card.dataset.id);
     });
@@ -152,6 +195,7 @@ function renderItemList(containerId, items, type) {
 
 function createItemCard(item) {
   const myRating = item.ratings?.[currentUser] || 0;
+  const hasLink = item.mapsUrl && !item.placeId;
 
   return `
     <div class="item-card" data-id="${item.id}">
@@ -166,8 +210,9 @@ function createItemCard(item) {
         ` : ''}
       </div>
       ${item.address ? `<div class="item-card-address">${escapeHtml(item.address)}</div>` : ''}
+      ${hasLink ? `<a href="${escapeHtml(item.mapsUrl)}" target="_blank" rel="noopener" class="item-card-link" onclick="event.stopPropagation()">Åpne lenke ↗</a>` : ''}
       <div class="item-card-meta">
-        <span>Lagt til av ${escapeHtml(item.addedBy)}</span>
+        <span></span>
         <div class="inline-rating">
           ${[1,2,3,4,5].map(i => `
             <button class="star-btn ${i <= myRating ? 'filled' : ''}" data-rating="${i}">★</button>
@@ -235,13 +280,113 @@ function renderToplistSection(containerId, items) {
       </div>`;
   }).join('');
 
-  // Event listeners for toppliste-kort
   container.querySelectorAll('.item-card').forEach(card => {
     card.addEventListener('click', () => openModal(card.dataset.id));
   });
 }
 
-// === Søk ===
+// === Inline søk (på listesidene) ===
+async function performInlineSearch(input, type, resultsContainer) {
+  const queryText = input.value.trim();
+  if (!queryText) return;
+
+  resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Søker...</p></div>';
+
+  try {
+    const results = await searchPlaces(queryText, type);
+
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="empty-state"><p>Ingen resultater funnet</p></div>';
+      return;
+    }
+
+    const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
+
+    resultsContainer.innerHTML = results.map((result, index) => {
+      const alreadyAdded = existChecks[index];
+      return `
+        <div class="search-result-card">
+          <div class="search-result-header">
+            <span class="search-result-name">${escapeHtml(result.name)}</span>
+          </div>
+          <div class="search-result-address">${escapeHtml(result.address)}</div>
+          <div class="search-result-actions">
+            <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
+              ${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    resultsContainer.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const result = results[parseInt(btn.dataset.index)];
+        btn.disabled = true;
+        btn.textContent = 'Legger til...';
+        try {
+          await addItem({
+            name: result.name,
+            type: type,
+            placeId: result.placeId,
+            address: result.address,
+            mapsUrl: result.mapsUrl,
+            addedBy: currentUser
+          });
+          btn.textContent = 'Lagt til!';
+          showToast(`${result.name} lagt til`);
+        } catch (error) {
+          btn.disabled = false;
+          btn.textContent = 'Legg til';
+          showToast('Kunne ikke legge til');
+        }
+      });
+    });
+  } catch (error) {
+    console.error('Søkefeil:', error);
+    resultsContainer.innerHTML = '<div class="empty-state"><p>Søket feilet. Prøv igjen.</p></div>';
+  }
+}
+
+// === Manuell tillegging ===
+async function handleManualAdd(form, type) {
+  const nameInput = form.querySelector('.manual-name');
+  const addressInput = form.querySelector('.manual-address');
+  const urlInput = form.querySelector('.manual-url');
+
+  const name = nameInput.value.trim();
+  if (!name) {
+    showToast('Du må fylle inn et navn');
+    nameInput.focus();
+    return;
+  }
+
+  const addBtn = form.querySelector('.btn-add');
+  addBtn.disabled = true;
+  addBtn.textContent = 'Legger til...';
+
+  try {
+    await addItem({
+      name: name,
+      type: type,
+      placeId: null,
+      address: addressInput.value.trim(),
+      mapsUrl: urlInput.value.trim(),
+      addedBy: currentUser
+    });
+
+    showToast(`${name} lagt til`);
+    form.querySelectorAll('input').forEach(i => i.value = '');
+    form.classList.add('hidden');
+  } catch (error) {
+    console.error('Feil ved manuell tillegging:', error);
+    showToast('Kunne ikke legge til');
+  } finally {
+    addBtn.disabled = false;
+    addBtn.textContent = 'Legg til';
+  }
+}
+
+// === Dedikert søk (søk-fanen) ===
 async function performSearch() {
   const input = document.getElementById('search-input');
   const queryText = input.value.trim();
@@ -258,10 +403,7 @@ async function performSearch() {
       return;
     }
 
-    // Sjekk hvilke som allerede er lagt til
-    const existChecks = await Promise.all(
-      results.map(r => placeIdExists(r.placeId))
-    );
+    const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
 
     resultsContainer.innerHTML = results.map((result, index) => {
       const alreadyAdded = existChecks[index];
@@ -273,23 +415,19 @@ async function performSearch() {
           <div class="search-result-address">${escapeHtml(result.address)}</div>
           ${result.osmType ? `<span class="search-result-type">${escapeHtml(result.osmType)}</span>` : ''}
           <div class="search-result-actions">
-            <button
-              class="btn-add"
-              data-index="${index}"
-              ${alreadyAdded ? 'disabled' : ''}
-            >${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}</button>
+            <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
+              ${alreadyAdded ? 'Allerede lagt til' : 'Legg til'}
+            </button>
           </div>
         </div>`;
     }).join('');
 
-    // Lagre resultater for "Legg til"-knappene
     resultsContainer.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
       btn.addEventListener('click', async () => {
         const result = results[parseInt(btn.dataset.index)];
         await handleAddFromSearch(result, btn);
       });
     });
-
   } catch (error) {
     console.error('Søkefeil:', error);
     resultsContainer.innerHTML = '<div class="empty-state"><p>Søket feilet. Prøv igjen.</p></div>';
@@ -334,6 +472,7 @@ function openModal(itemId) {
   const mapsLink = document.getElementById('modal-maps-link');
   if (item.mapsUrl) {
     mapsLink.href = item.mapsUrl;
+    mapsLink.textContent = item.placeId ? 'Åpne i kart' : 'Åpne lenke';
     mapsLink.classList.remove('hidden');
   } else {
     mapsLink.classList.add('hidden');
@@ -363,7 +502,6 @@ function openModal(itemId) {
       try {
         await rateItem(itemId, currentUser, rating);
         showToast('Vurdering lagret');
-        // Modal oppdateres automatisk via listener (vi åpner den på nytt)
         openModal(itemId);
       } catch (err) {
         showToast('Kunne ikke lagre vurdering');
@@ -372,9 +510,7 @@ function openModal(itemId) {
     });
   });
 
-  // Notater
   document.getElementById('modal-notes').value = item.notes || '';
-
   modal.classList.remove('hidden');
 }
 
@@ -397,7 +533,6 @@ async function saveNotes() {
 
 async function handleDelete() {
   if (!currentModalItemId) return;
-
   const item = allItems.find(i => i.id === currentModalItemId);
   if (!confirm(`Er du sikker på at du vil slette "${item?.name}"?`)) return;
 
@@ -416,10 +551,7 @@ function showToast(message) {
   const toast = document.getElementById('toast');
   toast.textContent = message;
   toast.classList.remove('hidden');
-
-  setTimeout(() => {
-    toast.classList.add('hidden');
-  }, 2500);
+  setTimeout(() => toast.classList.add('hidden'), 2500);
 }
 
 // === Helpers ===
