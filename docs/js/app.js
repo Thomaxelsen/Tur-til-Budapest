@@ -8,6 +8,7 @@ let currentSearchType = 'restaurant';
 let allItems = [];
 let itineraryItems = [];
 let currentModalItemId = null;
+const searchLoadingStates = new WeakMap();
 
 const USERS = ['Thomas', 'Carina', 'Kristine', 'Kim'];
 
@@ -94,9 +95,7 @@ function setupEventListeners() {
     });
 
     clearBtn.addEventListener('click', () => {
-      resultsDiv.innerHTML = '';
-      input.value = '';
-      clearBtn.classList.add('hidden');
+      clearInlineSearchContainer(container, { clearInput: true });
     });
   });
 
@@ -158,6 +157,12 @@ function setupEventListeners() {
 
   // Slett item
   document.getElementById('delete-item-btn').addEventListener('click', handleDelete);
+
+  // Lukk inline-sokeresultater ved klikk utenfor sokepanel
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('.inline-search')) return;
+    clearAllInlineSearchResults({ clearInputs: false });
+  });
 }
 
 // === Navigasjon ===
@@ -169,13 +174,14 @@ function switchView(view) {
   document.querySelector(`[data-view="${view}"]`).classList.add('active');
 
   // Tøm søkeresultater ved visningsbytte
-  document.querySelectorAll('.inline-search-results').forEach(el => { el.innerHTML = ''; });
-  document.querySelectorAll('.inline-search-input').forEach(el => { el.value = ''; });
-  document.querySelectorAll('.inline-search-clear').forEach(el => el.classList.add('hidden'));
+  clearAllInlineSearchResults({ clearInputs: true });
   const searchInput = document.getElementById('search-input');
   const searchResults = document.getElementById('search-results');
   if (searchInput) searchInput.value = '';
-  if (searchResults) searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter, aktiviteter eller barer i Budapest</p></div>';
+  if (searchResults) {
+    stopSearchLoading(searchResults);
+    searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter, aktiviteter eller barer i Budapest</p></div>';
+  }
 }
 
 // === Firestore Listeners ===
@@ -365,12 +371,16 @@ async function performInlineSearch(input, type, resultsContainer) {
   const queryText = input.value.trim();
   if (!queryText) return;
 
-  resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Søker...</p></div>';
+  renderSearchLoading(resultsContainer, {
+    title: 'Soker i Budapest...',
+    subtitle: 'Henter steder og filtrerer resultater'
+  });
 
   try {
     const results = await searchPlaces(queryText, type);
 
     if (results.length === 0) {
+      stopSearchLoading(resultsContainer);
       resultsContainer.innerHTML = '<div class="empty-state"><p>Ingen resultater funnet</p></div>';
       return;
     }
@@ -401,6 +411,7 @@ async function performInlineSearch(input, type, resultsContainer) {
     });
   } catch (error) {
     console.error('Søkefeil:', error);
+    stopSearchLoading(resultsContainer);
     resultsContainer.innerHTML = `<div class="empty-state"><p>${escapeHtml(getSearchErrorMessage(error))}</p></div>`;
   }
 }
@@ -451,12 +462,16 @@ async function performSearch() {
   if (!queryText) return;
 
   const resultsContainer = document.getElementById('search-results');
-  resultsContainer.innerHTML = '<div class="loading"><div class="spinner"></div><p>Søker...</p></div>';
+  renderSearchLoading(resultsContainer, {
+    title: 'Soker i Budapest...',
+    subtitle: 'Soker etter restauranter, aktiviteter eller barer'
+  });
 
   try {
     const results = await searchPlaces(queryText, currentSearchType);
 
     if (results.length === 0) {
+      stopSearchLoading(resultsContainer);
       resultsContainer.innerHTML = '<div class="empty-state"><p>Ingen resultater funnet</p><p>Prøv et annet søkeord</p></div>';
       return;
     }
@@ -468,6 +483,7 @@ async function performSearch() {
     });
   } catch (error) {
     console.error('Søkefeil:', error);
+    stopSearchLoading(resultsContainer);
     resultsContainer.innerHTML = `<div class="empty-state"><p>${escapeHtml(getSearchErrorMessage(error))}</p></div>`;
   }
 }
@@ -498,6 +514,7 @@ async function handleAddFromSearch(result, button) {
 }
 
 function renderSearchResults(container, results, existChecks, type = currentSearchType) {
+  stopSearchLoading(container);
   container.innerHTML = results.map((result, index) => buildSearchResultCard(result, index, !!existChecks[index], type)).join('');
 }
 
@@ -545,6 +562,66 @@ function getSearchErrorMessage(error) {
     default:
       return 'Soket feilet. Prov igjen.';
   }
+}
+
+function renderSearchLoading(container, options = {}) {
+  stopSearchLoading(container);
+
+  const title = options.title || 'Soker...';
+  const subtitle = options.subtitle || 'Henter resultater';
+
+  container.innerHTML = `
+    <div class="loading search-loading" role="status" aria-live="polite">
+      <div class="search-loading-row">
+        <div class="spinner"></div>
+        <div class="search-loading-copy">
+          <div class="search-loading-title">${escapeHtml(title)}</div>
+          <div class="search-loading-subtitle">${escapeHtml(subtitle)}</div>
+        </div>
+      </div>
+      <div class="search-loading-progress">
+        <div class="search-loading-progress-bar" style="width: 14%"></div>
+      </div>
+    </div>`;
+
+  const bar = container.querySelector('.search-loading-progress-bar');
+  let progress = 14;
+  const timerId = setInterval(() => {
+    progress += Math.max(1.4, (90 - progress) * 0.14);
+    progress = Math.min(progress, 90);
+    if (bar) {
+      bar.style.width = `${progress.toFixed(1)}%`;
+    }
+  }, 120);
+
+  searchLoadingStates.set(container, { timerId });
+}
+
+function stopSearchLoading(container) {
+  const state = searchLoadingStates.get(container);
+  if (!state) return;
+  clearInterval(state.timerId);
+  searchLoadingStates.delete(container);
+}
+
+function clearInlineSearchContainer(container, { clearInput = false } = {}) {
+  if (!container) return;
+  const resultsDiv = container.querySelector('.inline-search-results');
+  const clearBtn = container.querySelector('.inline-search-clear');
+  const input = container.querySelector('.inline-search-input');
+
+  if (resultsDiv) {
+    stopSearchLoading(resultsDiv);
+    resultsDiv.innerHTML = '';
+  }
+  if (clearBtn) clearBtn.classList.add('hidden');
+  if (clearInput && input) input.value = '';
+}
+
+function clearAllInlineSearchResults({ clearInputs = false } = {}) {
+  document.querySelectorAll('.inline-search').forEach(container => {
+    clearInlineSearchContainer(container, { clearInput: clearInputs });
+  });
 }
 
 // === Modal ===
