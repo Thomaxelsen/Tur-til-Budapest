@@ -12,6 +12,7 @@ const searchLoadingStates = new WeakMap();
 let allItemsLoaded = false;
 
 const USERS = ['Thomas', 'Carina', 'Kristine', 'Kim'];
+const HOTEL_COORDS = '47.5025,19.0615'; // Stories Boutique Hotel, Király utca 26
 
 // === Init ===
 document.addEventListener('DOMContentLoaded', () => {
@@ -756,6 +757,17 @@ function openModal(itemId) {
     } else {
       tripAdvisorLink.classList.add('hidden');
     }
+  }
+
+  const directionsLink = document.getElementById('modal-directions-link');
+  if (directionsLink) {
+    const destination = item.address || `${item.name}, Budapest`;
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(HOTEL_COORDS)}&destination=${encodeURIComponent(destination)}`;
+    directionsLink.dataset.url = directionsUrl;
+    directionsLink.dataset.title = `Rute til ${item.name}`;
+    directionsLink.dataset.provider = 'google_maps';
+    directionsLink.dataset.entityLabel = getEntityLabelDefinite(item.type);
+    directionsLink.classList.remove('hidden');
   }
 
   // Alle brukeres vurderinger
