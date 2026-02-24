@@ -771,6 +771,73 @@ body::after {
   padding: 4px;
 }
 
+/* Link-popup */
+#link-popup {
+  align-items: center;
+}
+
+.link-popup-content {
+  position: relative;
+  background: #1a2538;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 92%;
+  max-width: 700px;
+  height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.3s ease;
+}
+
+.link-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+#link-popup-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.link-popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.link-popup-open {
+  color: var(--primary-light);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.link-popup-open:hover { text-decoration: underline; }
+
+#link-popup .modal-close {
+  position: static;
+  font-size: 24px;
+}
+
+#link-popup-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #fff;
+}
+
 .modal-content h2 {
   font-size: 22px;
   margin-bottom: 4px;
@@ -946,11 +1013,21 @@ body::after {
   background: rgba(14, 26, 43, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 16px;
-  padding: 20px;
+  overflow: hidden;
   margin-bottom: 20px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+}
+
+.hotel-image img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  display: block;
+}
+
+.hotel-info {
+  padding: 20px;
 }
 
 .hotel-info h3 {

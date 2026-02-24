@@ -118,6 +118,16 @@ function setupEventListeners() {
   document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
   document.querySelector('.modal-close').addEventListener('click', closeModal);
 
+  // Link-popup
+  document.querySelectorAll('.link-popup').forEach(link => {
+    link.addEventListener('click', (e) => {
+      e.preventDefault();
+      openLinkPopup(link.dataset.url || link.href, link.textContent.trim());
+    });
+  });
+  document.getElementById('link-popup-close').addEventListener('click', closeLinkPopup);
+  document.querySelector('#link-popup .modal-backdrop').addEventListener('click', closeLinkPopup);
+
   // Lagre notat
   document.getElementById('save-notes-btn').addEventListener('click', saveNotes);
 
@@ -532,6 +542,18 @@ function openModal(itemId) {
 function closeModal() {
   document.getElementById('detail-modal').classList.add('hidden');
   currentModalItemId = null;
+}
+
+function openLinkPopup(url, title) {
+  document.getElementById('link-popup-title').textContent = title;
+  document.getElementById('link-popup-iframe').src = url;
+  document.getElementById('link-popup-external').href = url;
+  document.getElementById('link-popup').classList.remove('hidden');
+}
+
+function closeLinkPopup() {
+  document.getElementById('link-popup').classList.add('hidden');
+  document.getElementById('link-popup-iframe').src = '';
 }
 
 async function saveNotes() {

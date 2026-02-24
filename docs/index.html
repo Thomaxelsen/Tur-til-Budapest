@@ -111,11 +111,14 @@
 
         <!-- Hotellinfo -->
         <div class="hotel-card">
+          <div class="hotel-image">
+            <img src="images/Hotellet.avif" alt="Stories Boutique Hotel" loading="lazy">
+          </div>
           <div class="hotel-info">
             <h3>🏨 Stories Boutique Hotel</h3>
             <p class="hotel-address">Király utca 26., Budapest, 1061 Ungarn</p>
-            <p class="hotel-desc">Sjarmerende boutique-hotell i hjertet av Budapest, i den populære Király-gaten nær Andrássy-avenyen og Den jødiske kvartalen.</p>
-            <a href="https://storieshotel.hu/" target="_blank" rel="noopener" class="hotel-link">Besøk hotellets nettside ↗</a>
+            <p class="hotel-desc">Sjarmerende boutique-hotell i hjertet av Budapest, i den populære Király-gaten nær Andrássy-avenyen og det jødiske kvartalet.</p>
+            <a href="https://www.storiesbudapest.com/" class="hotel-link link-popup" data-url="https://www.storiesbudapest.com/">Besøk hotellets nettside ↗</a>
           </div>
           <div class="hotel-map">
             <iframe
@@ -342,6 +345,21 @@
         </div>
 
         <button id="delete-item-btn" class="btn btn-danger">Slett fra listen</button>
+      </div>
+    </div>
+
+    <!-- Lenke-popup -->
+    <div id="link-popup" class="modal hidden">
+      <div class="modal-backdrop"></div>
+      <div class="link-popup-content">
+        <div class="link-popup-header">
+          <span id="link-popup-title"></span>
+          <div class="link-popup-actions">
+            <a id="link-popup-external" href="#" target="_blank" rel="noopener" class="link-popup-open">Åpne i ny fane ↗</a>
+            <button id="link-popup-close" class="modal-close">&times;</button>
+          </div>
+        </div>
+        <iframe id="link-popup-iframe" src="" frameborder="0" loading="lazy"></iframe>
       </div>
     </div>
 
