@@ -9,6 +9,7 @@ let allItems = [];
 let itineraryItems = [];
 let currentModalItemId = null;
 const searchLoadingStates = new WeakMap();
+let allItemsLoaded = false;
 
 const USERS = ['Thomas', 'Carina', 'Kristine', 'Kim'];
 
@@ -199,6 +200,7 @@ function startListeners() {
   });
 
   listenToAllItems((items) => {
+    allItemsLoaded = true;
     allItems = items;
     renderToplist();
     renderItinerary();
@@ -385,7 +387,7 @@ async function performInlineSearch(input, type, resultsContainer) {
       return;
     }
 
-    const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
+    const existChecks = await getExistingPlaceChecks(results);
     renderSearchResults(resultsContainer, results, existChecks, type);
 
     wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
@@ -476,7 +478,7 @@ async function performSearch() {
       return;
     }
 
-    const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
+    const existChecks = await getExistingPlaceChecks(results);
     renderSearchResults(resultsContainer, results, existChecks, currentSearchType);
     wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
       await handleAddFromSearch(result, btn);
@@ -562,6 +564,21 @@ function getSearchErrorMessage(error) {
     default:
       return 'Soket feilet. Prov igjen.';
   }
+}
+
+async function getExistingPlaceChecks(results) {
+  // Fast path: use the already-synced local items instead of N Firestore queries.
+  if (allItemsLoaded) {
+    const knownPlaceIds = new Set(
+      allItems
+        .map(item => item.placeId)
+        .filter(Boolean)
+    );
+    return results.map(result => !!result.placeId && knownPlaceIds.has(result.placeId));
+  }
+
+  // Safe fallback during initial app load before allItems listener returns.
+  return Promise.all(results.map(r => placeIdExists(r.placeId)));
 }
 
 function renderSearchLoading(container, options = {}) {

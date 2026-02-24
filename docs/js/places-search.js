@@ -8,6 +8,8 @@ const RESULT_LIMIT = '12';
 // Use name+address for better Google Maps place matching.
 // Set to 'coordinates' to quickly roll back to the old behavior.
 const GOOGLE_MAPS_LINK_MODE = 'name_address'; // 'name_address' | 'coordinates' | 'hybrid'
+const SEARCH_CACHE_TTL_MS = 5 * 60 * 1000;
+const searchCache = new Map();
 
 const TYPE_CATEGORIES = {
   restaurant: 'catering.restaurant',
@@ -18,9 +20,15 @@ const TYPE_CATEGORIES = {
 export async function searchPlaces(queryText, type) {
   const trimmedQuery = (queryText || '').trim();
   if (!trimmedQuery) return [];
+  const cacheKey = `${type || 'restaurant'}::${trimmedQuery.toLowerCase()}`;
 
   if (!GEOAPIFY_API_KEY || GEOAPIFY_API_KEY === 'SET_GEOAPIFY_API_KEY_HERE') {
     throw createSearchError('missing_api_key', 'Geoapify API key mangler');
+  }
+
+  const cached = getCachedSearchResults(cacheKey);
+  if (cached) {
+    return cached;
   }
 
   const params = new URLSearchParams({
@@ -55,7 +63,9 @@ export async function searchPlaces(queryText, type) {
   const data = await response.json();
   const features = Array.isArray(data.features) ? data.features : [];
 
-  return features.map(mapGeoapifyResult).filter(Boolean);
+  const mappedResults = features.map(mapGeoapifyResult).filter(Boolean);
+  setCachedSearchResults(cacheKey, mappedResults);
+  return mappedResults;
 }
 
 function mapGeoapifyResult(feature) {
@@ -134,4 +144,21 @@ function createSearchError(code, message) {
   const error = new Error(message);
   error.code = code;
   return error;
+}
+
+function getCachedSearchResults(cacheKey) {
+  const entry = searchCache.get(cacheKey);
+  if (!entry) return null;
+  if (Date.now() - entry.createdAt > SEARCH_CACHE_TTL_MS) {
+    searchCache.delete(cacheKey);
+    return null;
+  }
+  return entry.results;
+}
+
+function setCachedSearchResults(cacheKey, results) {
+  searchCache.set(cacheKey, {
+    createdAt: Date.now(),
+    results
+  });
 }
