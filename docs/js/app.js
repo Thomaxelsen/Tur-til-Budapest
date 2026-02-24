@@ -135,12 +135,21 @@ function setupEventListeners() {
 
     e.preventDefault();
     e.stopPropagation();
-    openLinkPopup(trigger.dataset.url || trigger.href, trigger.dataset.title || trigger.textContent.trim());
+    openLinkPopup(
+      trigger.dataset.url || trigger.href,
+      trigger.dataset.title || trigger.textContent.trim(),
+      {
+        provider: trigger.dataset.provider || '',
+        entityLabel: trigger.dataset.entityLabel || ''
+      }
+    );
   });
   document.getElementById('link-popup-close').addEventListener('click', closeLinkPopup);
   document.querySelector('#link-popup .modal-backdrop').addEventListener('click', closeLinkPopup);
   document.getElementById('link-popup-iframe').addEventListener('load', () => {
     const status = document.getElementById('link-popup-status');
+    const fallback = document.getElementById('link-popup-fallback');
+    if (fallback && !fallback.classList.contains('hidden')) return;
     if (status) status.classList.add('hidden');
   });
 
@@ -268,8 +277,8 @@ function createItemCard(item) {
       ${item.address ? `<div class="item-card-address">${escapeHtml(item.address)}</div>` : ''}
       ${(hasMapsLink || hasTripAdvisorLink) ? `
         <div class="item-card-links">
-          ${hasMapsLink ? `<a href="${escapeHtml(item.mapsUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.mapsUrl)}" data-title="${escapeHtml(item.name)} - Google Maps">Maps</a>` : ''}
-          ${hasTripAdvisorLink ? `<a href="${escapeHtml(item.tripAdvisorUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.tripAdvisorUrl)}" data-title="${escapeHtml(item.name)} - TripAdvisor">TripAdvisor</a>` : ''}
+          ${hasMapsLink ? `<a href="${escapeHtml(item.mapsUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.mapsUrl)}" data-title="${escapeHtml(item.name)} - Google Maps" data-provider="google_maps" data-entity-label="${getEntityLabelDefinite(item.type)}">Maps</a>` : ''}
+          ${hasTripAdvisorLink ? `<a href="${escapeHtml(item.tripAdvisorUrl)}" class="card-link link-popup-trigger" data-url="${escapeHtml(item.tripAdvisorUrl)}" data-title="${escapeHtml(item.name)} - TripAdvisor" data-provider="tripadvisor" data-entity-label="${getEntityLabelDefinite(item.type)}">TripAdvisor</a>` : ''}
         </div>
       ` : ''}
       <div class="item-card-meta">
@@ -367,7 +376,7 @@ async function performInlineSearch(input, type, resultsContainer) {
     }
 
     const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
-    renderSearchResults(resultsContainer, results, existChecks);
+    renderSearchResults(resultsContainer, results, existChecks, type);
 
     wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
       btn.disabled = true;
@@ -453,7 +462,7 @@ async function performSearch() {
     }
 
     const existChecks = await Promise.all(results.map(r => placeIdExists(r.placeId)));
-    renderSearchResults(resultsContainer, results, existChecks);
+    renderSearchResults(resultsContainer, results, existChecks, currentSearchType);
     wireSearchAddButtons(resultsContainer, results, async (result, btn) => {
       await handleAddFromSearch(result, btn);
     });
@@ -488,12 +497,13 @@ async function handleAddFromSearch(result, button) {
   }
 }
 
-function renderSearchResults(container, results, existChecks) {
-  container.innerHTML = results.map((result, index) => buildSearchResultCard(result, index, !!existChecks[index])).join('');
+function renderSearchResults(container, results, existChecks, type = currentSearchType) {
+  container.innerHTML = results.map((result, index) => buildSearchResultCard(result, index, !!existChecks[index], type)).join('');
 }
 
-function buildSearchResultCard(result, index, alreadyAdded) {
+function buildSearchResultCard(result, index, alreadyAdded, type) {
   const mapsUrl = result.googleMapsUrl || result.mapsUrl;
+  const entityLabel = getEntityLabelDefinite(type);
   return `
     <div class="search-result-card">
       <div class="search-result-header">
@@ -502,8 +512,8 @@ function buildSearchResultCard(result, index, alreadyAdded) {
       <div class="search-result-address">${escapeHtml(result.address || '')}</div>
       ${result.category ? `<span class="search-result-type">${escapeHtml(result.category)}</span>` : ''}
       <div class="search-result-links">
-        ${mapsUrl ? `<a href="${escapeHtml(mapsUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(mapsUrl)}" data-title="${escapeHtml(result.name)} - Google Maps">Google Maps</a>` : ''}
-        ${result.tripAdvisorUrl ? `<a href="${escapeHtml(result.tripAdvisorUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(result.tripAdvisorUrl)}" data-title="${escapeHtml(result.name)} - TripAdvisor">TripAdvisor</a>` : ''}
+        ${mapsUrl ? `<a href="${escapeHtml(mapsUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(mapsUrl)}" data-title="${escapeHtml(result.name)} - Google Maps" data-provider="google_maps" data-entity-label="${entityLabel}">Google Maps</a>` : ''}
+        ${result.tripAdvisorUrl ? `<a href="${escapeHtml(result.tripAdvisorUrl)}" class="search-link link-popup-trigger" data-url="${escapeHtml(result.tripAdvisorUrl)}" data-title="${escapeHtml(result.name)} - TripAdvisor" data-provider="tripadvisor" data-entity-label="${entityLabel}">TripAdvisor</a>` : ''}
       </div>
       <div class="search-result-actions">
         <button class="btn-add" data-index="${index}" ${alreadyAdded ? 'disabled' : ''}>
@@ -553,6 +563,8 @@ function openModal(itemId) {
   if (item.mapsUrl) {
     mapsLink.dataset.url = item.mapsUrl;
     mapsLink.dataset.title = `${item.name} - Google Maps`;
+    mapsLink.dataset.provider = 'google_maps';
+    mapsLink.dataset.entityLabel = getEntityLabelDefinite(item.type);
     mapsLink.classList.remove('hidden');
   } else {
     mapsLink.classList.add('hidden');
@@ -562,6 +574,8 @@ function openModal(itemId) {
     if (item.tripAdvisorUrl) {
       tripAdvisorLink.dataset.url = item.tripAdvisorUrl;
       tripAdvisorLink.dataset.title = `${item.name} - TripAdvisor`;
+      tripAdvisorLink.dataset.provider = 'tripadvisor';
+      tripAdvisorLink.dataset.entityLabel = getEntityLabelDefinite(item.type);
       tripAdvisorLink.classList.remove('hidden');
     } else {
       tripAdvisorLink.classList.add('hidden');
@@ -609,26 +623,80 @@ function closeModal() {
   currentModalItemId = null;
 }
 
-function openLinkPopup(url, title) {
+function openLinkPopup(url, title, options = {}) {
   const safeUrl = (url || '').trim();
   if (!safeUrl || safeUrl === '#') return;
 
+  const provider = normalizeProvider(options.provider, safeUrl);
+  const entityLabel = options.entityLabel || 'stedet';
+  const forceExternalCta = shouldShowExternalCtaOnly(safeUrl, provider);
+
   document.getElementById('link-popup-title').textContent = title;
   document.getElementById('link-popup-external').href = safeUrl;
+  const externalLink = document.getElementById('link-popup-external');
+  const iframe = document.getElementById('link-popup-iframe');
+  const fallback = document.getElementById('link-popup-fallback');
+  const fallbackText = document.getElementById('link-popup-fallback-text');
+  const fallbackBtn = document.getElementById('link-popup-fallback-btn');
   const status = document.getElementById('link-popup-status');
+
   if (status) {
     status.textContent = 'Laster side...';
-    status.classList.remove('hidden');
+    status.classList.toggle('hidden', forceExternalCta);
   }
-  document.getElementById('link-popup-iframe').src = safeUrl;
+
+  if (fallback && fallbackText && fallbackBtn) {
+    fallbackText.textContent = buildPopupFallbackDescription(provider);
+    fallbackBtn.textContent = buildPopupFallbackText(provider, entityLabel);
+    fallbackBtn.href = safeUrl;
+    fallback.classList.toggle('hidden', !forceExternalCta);
+  }
+
+  if (externalLink) {
+    externalLink.textContent = forceExternalCta ? 'Åpne i ny fane ↗' : 'Åpne i ny fane ↗';
+  }
+
+  iframe.classList.toggle('hidden', forceExternalCta);
+  iframe.src = forceExternalCta ? 'about:blank' : safeUrl;
   document.getElementById('link-popup').classList.remove('hidden');
 }
 
 function closeLinkPopup() {
   document.getElementById('link-popup').classList.add('hidden');
-  document.getElementById('link-popup-iframe').src = '';
+  const iframe = document.getElementById('link-popup-iframe');
+  iframe.src = '';
+  iframe.classList.remove('hidden');
   const status = document.getElementById('link-popup-status');
   if (status) status.classList.add('hidden');
+  const fallback = document.getElementById('link-popup-fallback');
+  if (fallback) fallback.classList.add('hidden');
+}
+
+function normalizeProvider(provider, url) {
+  if (provider) return provider;
+  const lower = (url || '').toLowerCase();
+  if (lower.includes('tripadvisor.')) return 'tripadvisor';
+  if (lower.includes('google.com/maps') || lower.includes('maps.google.')) return 'google_maps';
+  return 'website';
+}
+
+function shouldShowExternalCtaOnly(url, provider) {
+  if (provider === 'tripadvisor' || provider === 'google_maps') return true;
+  const lower = (url || '').toLowerCase();
+  return lower.includes('tripadvisor.') || lower.includes('google.com/maps') || lower.includes('maps.google.');
+}
+
+function buildPopupFallbackText(provider, entityLabel) {
+  if (provider === 'tripadvisor') return `Se ${entityLabel} på Tripadvisor`;
+  if (provider === 'google_maps') return `Se ${entityLabel} i Google Maps`;
+  return `Se ${entityLabel} i ny fane`;
+}
+
+function buildPopupFallbackDescription(provider) {
+  if (provider === 'tripadvisor' || provider === 'google_maps') {
+    return 'Denne siden kan ikke vises inne i popupen, men du kan åpne den direkte.';
+  }
+  return 'Lenken åpnes best i ny fane.';
 }
 
 async function saveNotes() {
@@ -731,6 +799,13 @@ function renderItinerary() {
 
 function getTypeLabel(type) {
   return type === 'restaurant' ? 'Restaurant' : type === 'activity' ? 'Aktivitet' : 'Bar';
+}
+
+function getEntityLabelDefinite(type) {
+  if (type === 'restaurant') return 'restauranten';
+  if (type === 'activity') return 'aktiviteten';
+  if (type === 'bar') return 'baren';
+  return 'stedet';
 }
 
 function createItineraryCard(item) {

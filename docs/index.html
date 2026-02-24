@@ -150,7 +150,7 @@
             <h3>🏨 Stories Boutique Hotel</h3>
             <p class="hotel-address">Király utca 26., Budapest, 1061 Ungarn</p>
             <p class="hotel-desc">Sjarmerende boutique-hotell i hjertet av Budapest, i den populære Király-gaten nær Andrássy-avenyen og det jødiske kvartalet.</p>
-            <a href="https://www.storiesbudapest.com/" class="hotel-link link-popup-trigger" data-url="https://www.storiesbudapest.com/" data-title="Stories Boutique Hotel">Besøk hotellets nettside ↗</a>
+            <a href="https://www.storiesbudapest.com/" class="hotel-link link-popup-trigger" data-url="https://www.storiesbudapest.com/" data-title="Stories Boutique Hotel" data-entity-label="hotellet" data-provider="website">Besøk hotellets nettside ↗</a>
           </div>
           <div class="hotel-map">
             <iframe
@@ -399,8 +399,14 @@
           </div>
         </div>
         <div id="link-popup-status" class="link-popup-status hidden">Laster side...</div>
-        <div id="link-popup-hint" class="link-popup-hint">Hvis siden ikke vises her, bruk "Åpne i ny fane".</div>
-        <iframe id="link-popup-iframe" src="" frameborder="0" loading="lazy"></iframe>
+        <div id="link-popup-hint" class="link-popup-hint">Hvis siden ikke vises her, bruk den store knappen under.</div>
+        <div class="link-popup-body">
+          <iframe id="link-popup-iframe" src="" frameborder="0" loading="lazy"></iframe>
+          <div id="link-popup-fallback" class="link-popup-fallback hidden">
+            <p id="link-popup-fallback-text" class="link-popup-fallback-text"></p>
+            <a id="link-popup-fallback-btn" href="#" target="_blank" rel="noopener" class="link-popup-fallback-btn">Åpne i ny fane</a>
+          </div>
+        </div>
       </div>
     </div>
 
