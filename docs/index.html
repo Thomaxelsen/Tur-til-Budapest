@@ -45,7 +45,7 @@
           <div class="inline-search-row">
             <input type="text" class="inline-search-input" placeholder="Søk etter restaurant i Budapest..." autocomplete="off">
             <button class="inline-search-btn">🔍</button>
-            <button class="inline-search-clear hidden" title="Tøm søk">&times;</button>
+            <button class="inline-search-clear hidden">Tøm søk</button>
             <button class="btn-manual-add">+ Manuelt</button>
           </div>
           <div class="manual-add-form hidden">
@@ -71,7 +71,7 @@
           <div class="inline-search-row">
             <input type="text" class="inline-search-input" placeholder="Søk etter aktivitet i Budapest..." autocomplete="off">
             <button class="inline-search-btn">🔍</button>
-            <button class="inline-search-clear hidden" title="Tøm søk">&times;</button>
+            <button class="inline-search-clear hidden">Tøm søk</button>
             <button class="btn-manual-add">+ Manuelt</button>
           </div>
           <div class="manual-add-form hidden">
@@ -88,6 +88,32 @@
         <div id="activity-list" class="item-list"></div>
       </section>
 
+      <!-- Barer -->
+      <section id="view-bars" class="view">
+        <div class="view-header">
+          <h2>Barer</h2>
+        </div>
+        <div class="inline-search" data-type="bar">
+          <div class="inline-search-row">
+            <input type="text" class="inline-search-input" placeholder="Søk etter bar i Budapest..." autocomplete="off">
+            <button class="inline-search-btn">🔍</button>
+            <button class="inline-search-clear hidden">Tøm søk</button>
+            <button class="btn-manual-add">+ Manuelt</button>
+          </div>
+          <div class="manual-add-form hidden">
+            <input type="text" class="manual-name" placeholder="Navn (påkrevd)">
+            <input type="text" class="manual-address" placeholder="Adresse (valgfritt)">
+            <input type="url" class="manual-url" placeholder="Lenke / URL (valgfritt)">
+            <div class="manual-form-actions">
+              <button class="btn-cancel">Avbryt</button>
+              <button class="btn-add">Legg til</button>
+            </div>
+          </div>
+          <div class="inline-search-results"></div>
+        </div>
+        <div id="bars-list" class="item-list"></div>
+      </section>
+
       <!-- Toppliste -->
       <section id="view-toplist" class="view">
         <div class="view-header">
@@ -101,6 +127,10 @@
           <div class="toplist-column">
             <h3>🎯 Topp Aktiviteter</h3>
             <div id="top-activities" class="item-list"></div>
+          </div>
+          <div class="toplist-column">
+            <h3>🍸 Topp Barer</h3>
+            <div id="top-bars" class="item-list"></div>
           </div>
         </div>
       </section>
@@ -143,6 +173,10 @@
             <div class="unplanned-col">
               <h4>🎯 Aktiviteter</h4>
               <div id="unplanned-activities" class="time-slot" data-day="" data-slot=""></div>
+            </div>
+            <div class="unplanned-col">
+              <h4>🍸 Barer</h4>
+              <div id="unplanned-bars" class="time-slot" data-day="" data-slot=""></div>
             </div>
           </div>
         </div>
@@ -276,6 +310,7 @@
           <div class="search-type-toggle">
             <button class="toggle-btn active" data-search-type="restaurant">Restauranter</button>
             <button class="toggle-btn" data-search-type="activity">Aktiviteter</button>
+            <button class="toggle-btn" data-search-type="bar">Barer</button>
           </div>
           <div class="search-input-wrapper">
             <input type="text" id="search-input" placeholder="Søk i Budapest..." autocomplete="off">
@@ -284,7 +319,7 @@
         </div>
         <div id="search-results" class="item-list">
           <div class="empty-state">
-            <p>Søk etter restauranter eller aktiviteter i Budapest</p>
+            <p>Søk etter restauranter, aktiviteter eller barer i Budapest</p>
           </div>
         </div>
       </section>
@@ -299,6 +334,10 @@
       <button class="nav-btn" data-view="activities">
         <span class="nav-icon">🎯</span>
         <span class="nav-label">Aktiviteter</span>
+      </button>
+      <button class="nav-btn" data-view="bars">
+        <span class="nav-icon">🍸</span>
+        <span class="nav-label">Barer</span>
       </button>
       <button class="nav-btn" data-view="toplist">
         <span class="nav-icon">🏆</span>

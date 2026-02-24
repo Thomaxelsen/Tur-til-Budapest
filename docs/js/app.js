@@ -159,7 +159,7 @@ function switchView(view) {
   const searchInput = document.getElementById('search-input');
   const searchResults = document.getElementById('search-results');
   if (searchInput) searchInput.value = '';
-  if (searchResults) searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter eller aktiviteter i Budapest</p></div>';
+  if (searchResults) searchResults.innerHTML = '<div class="empty-state"><p>Søk etter restauranter, aktiviteter eller barer i Budapest</p></div>';
 }
 
 // === Firestore Listeners ===
@@ -170,6 +170,10 @@ function startListeners() {
 
   listenToItems('activity', (items) => {
     renderGroupedList('activity-list', items, 'activity');
+  });
+
+  listenToItems('bar', (items) => {
+    renderGroupedList('bars-list', items, 'bar');
   });
 
   listenToAllItems((items) => {
@@ -187,7 +191,7 @@ function startListeners() {
 // === Rendering: Grouped by user ===
 function renderGroupedList(containerId, items, type) {
   const container = document.getElementById(containerId);
-  const typeName = type === 'restaurant' ? 'restauranter' : 'aktiviteter';
+  const typeName = type === 'restaurant' ? 'restauranter' : type === 'activity' ? 'aktiviteter' : 'barer';
 
   let html = '<div class="user-sections-grid">';
   USERS.forEach(user => {
@@ -291,8 +295,13 @@ function renderToplist() {
     .filter(i => i.type === 'activity' && i.ratingCount > 0)
     .sort((a, b) => b.averageRating - a.averageRating);
 
+  const bars = allItems
+    .filter(i => i.type === 'bar' && i.ratingCount > 0)
+    .sort((a, b) => b.averageRating - a.averageRating);
+
   renderToplistSection('top-restaurants', restaurants);
   renderToplistSection('top-activities', activities);
+  renderToplistSection('top-bars', bars);
 }
 
 function renderToplistSection(containerId, items) {
@@ -493,7 +502,7 @@ async function handleAddFromSearch(result, button) {
     });
 
     button.textContent = 'Lagt til!';
-    showToast(`${result.name} lagt til i ${currentSearchType === 'restaurant' ? 'restauranter' : 'aktiviteter'}`);
+    showToast(`${result.name} lagt til i ${currentSearchType === 'restaurant' ? 'restauranter' : currentSearchType === 'activity' ? 'aktiviteter' : 'barer'}`);
   } catch (error) {
     console.error('Feil ved tillegging:', error);
     button.disabled = false;
@@ -621,12 +630,13 @@ function renderItinerary() {
 
   const unplanned = itineraryItems.filter(i => !i.day || !i.slot);
 
-  const byType = { restaurant: [], activity: [] };
+  const byType = { restaurant: [], activity: [], bar: [] };
   unplanned.forEach(i => { if (byType[i.type]) byType[i.type].push({ ...i, kind: 'itin' }); });
   suggestions.forEach(i => { if (byType[i.type]) byType[i.type].push({ ...i, kind: 'new' }); });
 
-  for (const type of ['restaurant', 'activity']) {
-    const el = document.getElementById(type === 'restaurant' ? 'unplanned-restaurants' : 'unplanned-activities');
+  const unplannedIds = { restaurant: 'unplanned-restaurants', activity: 'unplanned-activities', bar: 'unplanned-bars' };
+  for (const type of ['restaurant', 'activity', 'bar']) {
+    const el = document.getElementById(unplannedIds[type]);
     if (!el) continue;
     const items = byType[type];
     el.innerHTML = items.length > 0
@@ -672,8 +682,12 @@ function renderItinerary() {
   });
 }
 
+function getTypeLabel(type) {
+  return type === 'restaurant' ? 'Restaurant' : type === 'activity' ? 'Aktivitet' : 'Bar';
+}
+
 function createItineraryCard(item) {
-  const typeLabel = item.type === 'restaurant' ? 'Restaurant' : 'Aktivitet';
+  const typeLabel = getTypeLabel(item.type);
   return `
     <div class="itinerary-card" data-itin-id="${item.id}" draggable="true">
       <span class="grip">⠿</span>
@@ -684,7 +698,7 @@ function createItineraryCard(item) {
 }
 
 function createSuggestionCard(item) {
-  const typeLabel = item.type === 'restaurant' ? 'Restaurant' : 'Aktivitet';
+  const typeLabel = getTypeLabel(item.type);
   return `
     <div class="itinerary-card suggestion-card"
          data-item-id="${item.id}"

@@ -230,23 +230,20 @@ body::after {
 }
 
 .inline-search-clear {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.1);
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: #c0392b;
   border: none;
-  color: var(--text-secondary);
-  font-size: 20px;
+  color: white;
+  font-size: 13px;
+  font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
+  transition: background 0.2s;
 }
 
 .inline-search-clear:hover {
-  background: rgba(255,255,255,0.2);
-  color: white;
+  background: #e74c3c;
 }
 
 .btn-manual-add {
@@ -721,14 +718,15 @@ body::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
+  gap: 2px;
   background: none;
   border: none;
   color: var(--text-secondary);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 10px;
   transition: color 0.2s;
-  padding: 8px 0;
+  padding: 6px 0;
+  min-width: 0;
 }
 
 .nav-btn.active {
@@ -736,7 +734,7 @@ body::after {
 }
 
 .nav-icon {
-  font-size: 22px;
+  font-size: 20px;
   line-height: 1;
 }
 
@@ -1203,7 +1201,7 @@ body::after {
 
 .unplanned-columns {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
 }
 
@@ -1230,7 +1228,7 @@ body::after {
   opacity: 1;
 }
 
-@media (max-width: 480px) {
+@media (max-width: 600px) {
   .unplanned-columns {
     grid-template-columns: 1fr;
   }
@@ -1365,6 +1363,11 @@ body::after {
 .itinerary-card .itin-type.activity {
   color: var(--primary-light);
   background: rgba(45, 158, 135, 0.15);
+}
+
+.itinerary-card .itin-type.bar {
+  color: #d9b3ff;
+  background: rgba(147, 51, 234, 0.15);
 }
 
 .itinerary-card .itin-remove {
