@@ -2,7 +2,7 @@
   "name": "Budapest 2026 - Turplanlegger",
   "short_name": "Budapest 2026",
   "description": "Planlegg restauranter og aktiviteter i Budapest",
-  "start_url": "/index.html",
+  "start_url": "index.html",
   "display": "standalone",
   "background_color": "#f5f5f5",
   "theme_color": "#2d7d6f",

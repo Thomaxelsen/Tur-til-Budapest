@@ -1,12 +1,12 @@
 const CACHE_NAME = 'turplan-v1';
 const STATIC_ASSETS = [
-  '/index.html',
-  '/css/style.css',
-  '/js/firebase-config.js',
-  '/js/firestore-service.js',
-  '/js/places-search.js',
-  '/js/app.js',
-  '/manifest.json'
+  'index.html',
+  'css/style.css',
+  'js/firebase-config.js',
+  'js/firestore-service.js',
+  'js/places-search.js',
+  'js/app.js',
+  'manifest.json'
 ];
 
 // Install: pre-cache static assets
