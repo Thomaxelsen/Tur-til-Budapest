@@ -5,6 +5,9 @@ const GEOAPIFY_API_KEY = '80414bfb37ad4bb48ac56b2432a08173';
 const BUDAPEST_RECT = '18.9,47.35,19.2,47.6'; // lon1,lat1,lon2,lat2
 const BUDAPEST_CENTER = '19.0402,47.4979'; // lon,lat
 const RESULT_LIMIT = '12';
+// Use name+address for better Google Maps place matching.
+// Set to 'coordinates' to quickly roll back to the old behavior.
+const GOOGLE_MAPS_LINK_MODE = 'name_address'; // 'name_address' | 'coordinates' | 'hybrid'
 
 const TYPE_CATEGORIES = {
   restaurant: 'catering.restaurant',
@@ -66,10 +69,12 @@ function mapGeoapifyResult(feature) {
   const address = p.address_line2 || p.formatted || '';
   const category = normalizeCategoryLabel(p.categories?.[0] || '');
 
-  const mapsQuery = safeLat !== null && safeLon !== null
-    ? `${safeLat},${safeLon}`
-    : `${name} Budapest`;
-  const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(mapsQuery)}`;
+  const googleMapsUrl = buildGoogleMapsUrl({
+    name,
+    address,
+    lat: safeLat,
+    lon: safeLon
+  });
 
   return {
     placeId: `geoapify_${placeIdRaw}`,
@@ -92,6 +97,37 @@ function normalizeCategoryLabel(category) {
     .slice(-2)
     .join(' / ')
     .replace(/_/g, ' ');
+}
+
+function buildGoogleMapsUrl({ name, address, lat, lon }) {
+  const coordinateQuery = (lat !== null && lon !== null) ? `${lat},${lon}` : '';
+  const placeQuery = buildPlaceQuery(name, address);
+
+  let query = '';
+  if (GOOGLE_MAPS_LINK_MODE === 'coordinates') {
+    query = coordinateQuery || placeQuery;
+  } else if (GOOGLE_MAPS_LINK_MODE === 'hybrid') {
+    query = placeQuery || coordinateQuery;
+  } else {
+    // name_address (default)
+    query = placeQuery || coordinateQuery;
+  }
+
+  if (!query) return '';
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+
+function buildPlaceQuery(name, address) {
+  const cleanName = (name || '').trim();
+  const cleanAddress = (address || '').trim();
+
+  if (cleanName && cleanAddress) {
+    return `${cleanName}, ${cleanAddress}, Budapest`;
+  }
+  if (cleanName) {
+    return `${cleanName}, Budapest`;
+  }
+  return '';
 }
 
 function createSearchError(code, message) {
