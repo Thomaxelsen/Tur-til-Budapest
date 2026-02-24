@@ -3,6 +3,7 @@ import { searchPlaces } from './places-search.js';
 
 // === State ===
 let currentUser = localStorage.getItem('turplan_user') || null;
+let currentView = 'home';
 let currentSearchType = 'restaurant';
 let allItems = [];
 let itineraryItems = [];
