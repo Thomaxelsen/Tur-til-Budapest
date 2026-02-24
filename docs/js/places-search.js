@@ -44,28 +44,8 @@ export async function searchPlaces(queryText, type) {
     return cached;
   }
 
-  // Precision first: name search gives better quality for restaurants/bars.
-  let mappedResults = await fetchGeoapifyPlaces(trimmedQuery, type, 'name');
-
-  // Fallback for activities: use broader text search + a few Hungarian synonyms.
-  if (mappedResults.length === 0 && type === 'activity') {
-    const seen = new Set();
-    const merged = [];
-    const fallbackQueries = [trimmedQuery, ...getActivityFallbackQueries(trimmedQuery)];
-
-    for (const fallbackQuery of fallbackQueries) {
-      const batch = await fetchGeoapifyPlaces(fallbackQuery, type, 'text');
-      for (const item of batch) {
-        if (seen.has(item.placeId)) continue;
-        seen.add(item.placeId);
-        merged.push(item);
-      }
-      if (merged.length >= Number(RESULT_LIMIT)) break;
-    }
-
-    const filteredMerged = filterActivityFallbackResults(merged, fallbackQueries);
-    mappedResults = (filteredMerged.length > 0 ? filteredMerged : merged).slice(0, Number(RESULT_LIMIT));
-  }
+  // Precision-first search gives better quality than broad text search.
+  const mappedResults = await fetchGeoapifyPlaces(trimmedQuery, type, 'name');
 
   setCachedSearchResults(cacheKey, mappedResults);
   return mappedResults;
@@ -181,56 +161,6 @@ async function fetchGeoapifyPlaces(queryText, type, mode = 'name') {
   const data = await response.json();
   const features = Array.isArray(data.features) ? data.features : [];
   return features.map(mapGeoapifyResult).filter(Boolean);
-}
-
-function getActivityFallbackQueries(queryText) {
-  const normalized = (queryText || '').trim().toLowerCase();
-  const extras = ACTIVITY_QUERY_TRANSLATIONS[normalized] || [];
-  return [...new Set(extras)];
-}
-
-function filterActivityFallbackResults(results, queries) {
-  const keywords = buildActivityMatchKeywords(queries);
-  if (keywords.length === 0) return results;
-
-  return results.filter(result => {
-    const name = normalizeForMatch(result.name);
-    const category = normalizeForMatch(result.category);
-    return keywords.some(keyword => name.includes(keyword) || category.includes(keyword));
-  });
-}
-
-function buildActivityMatchKeywords(queries) {
-  const keywords = new Set();
-  const genericNoise = new Set(['budapest', 'hungary']);
-
-  for (const query of queries) {
-    const normalized = normalizeForMatch(query);
-    if (!normalized) continue;
-
-    normalized.split(/\s+/).forEach(part => {
-      if (part.length < 3) return;
-      if (genericNoise.has(part)) return;
-      keywords.add(part);
-    });
-
-    if (normalized.length >= 4 && !genericNoise.has(normalized)) {
-      keywords.add(normalized);
-    }
-  }
-
-  return [...keywords];
-}
-
-function normalizeForMatch(value) {
-  return (value || '')
-    .toString()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9\s/]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }
 
 function createSearchError(code, message) {
