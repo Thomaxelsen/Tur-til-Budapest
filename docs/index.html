@@ -103,6 +103,172 @@
         </div>
       </section>
 
+      <!-- Reiseplan -->
+      <section id="view-itinerary" class="view">
+        <div class="view-header">
+          <h2>Reiseplan</h2>
+        </div>
+
+        <!-- Hotellinfo -->
+        <div class="hotel-card">
+          <div class="hotel-info">
+            <h3>🏨 Stories Boutique Hotel</h3>
+            <p class="hotel-address">Király utca 26., Budapest, 1061 Ungarn</p>
+            <p class="hotel-desc">Sjarmerende boutique-hotell i hjertet av Budapest, i den populære Király-gaten nær Andrássy-avenyen og Den jødiske kvartalen.</p>
+            <a href="https://storieshotel.hu/" target="_blank" rel="noopener" class="hotel-link">Besøk hotellets nettside ↗</a>
+          </div>
+          <div class="hotel-map">
+            <iframe
+              src="https://www.openstreetmap.org/export/embed.html?bbox=19.055%2C47.499%2C19.068%2C47.506&layer=mapnik&marker=47.5025%2C19.0615"
+              frameborder="0"
+              loading="lazy"
+              title="Kart: Stories Boutique Hotel"
+            ></iframe>
+          </div>
+        </div>
+
+        <!-- Legg til fra toppliste -->
+        <div class="itinerary-actions">
+          <button id="add-from-toplist-btn" class="btn-itinerary-add">+ Legg til fra listene</button>
+        </div>
+
+        <!-- Picker-modal for å velge items -->
+        <div id="itinerary-picker" class="itinerary-picker hidden">
+          <div class="picker-header">
+            <h3>Velg fra listene</h3>
+            <button id="close-picker-btn" class="modal-close">&times;</button>
+          </div>
+          <div id="picker-items" class="picker-items"></div>
+        </div>
+
+        <!-- Uplanlagte items -->
+        <div class="unplanned-section">
+          <h3>📌 Uplanlagte</h3>
+          <div id="unplanned-items" class="time-slot" data-day="" data-slot="">
+            <div class="slot-empty">Legg til items og dra dem hit eller til en dag</div>
+          </div>
+        </div>
+
+        <!-- Dagplanlegger -->
+        <div class="itinerary-days">
+          <div class="day-column" data-day="2026-04-16">
+            <div class="day-header">
+              <span class="day-name">Torsdag</span>
+              <span class="day-date">16. april</span>
+            </div>
+            <div class="day-slots">
+              <div class="time-slot" data-day="2026-04-16" data-slot="morning">
+                <div class="slot-label">🌅 Formiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-16" data-slot="lunch">
+                <div class="slot-label">🍽️ Lunsj</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-16" data-slot="afternoon">
+                <div class="slot-label">☀️ Ettermiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-16" data-slot="dinner">
+                <div class="slot-label">🍷 Middag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-16" data-slot="evening">
+                <div class="slot-label">🌙 Kveld</div>
+                <div class="slot-items"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="day-column" data-day="2026-04-17">
+            <div class="day-header">
+              <span class="day-name">Fredag</span>
+              <span class="day-date">17. april</span>
+            </div>
+            <div class="day-slots">
+              <div class="time-slot" data-day="2026-04-17" data-slot="morning">
+                <div class="slot-label">🌅 Formiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-17" data-slot="lunch">
+                <div class="slot-label">🍽️ Lunsj</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-17" data-slot="afternoon">
+                <div class="slot-label">☀️ Ettermiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-17" data-slot="dinner">
+                <div class="slot-label">🍷 Middag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-17" data-slot="evening">
+                <div class="slot-label">🌙 Kveld</div>
+                <div class="slot-items"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="day-column" data-day="2026-04-18">
+            <div class="day-header">
+              <span class="day-name">Lørdag</span>
+              <span class="day-date">18. april</span>
+            </div>
+            <div class="day-slots">
+              <div class="time-slot" data-day="2026-04-18" data-slot="morning">
+                <div class="slot-label">🌅 Formiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-18" data-slot="lunch">
+                <div class="slot-label">🍽️ Lunsj</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-18" data-slot="afternoon">
+                <div class="slot-label">☀️ Ettermiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-18" data-slot="dinner">
+                <div class="slot-label">🍷 Middag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-18" data-slot="evening">
+                <div class="slot-label">🌙 Kveld</div>
+                <div class="slot-items"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="day-column" data-day="2026-04-19">
+            <div class="day-header">
+              <span class="day-name">Søndag</span>
+              <span class="day-date">19. april</span>
+            </div>
+            <div class="day-slots">
+              <div class="time-slot" data-day="2026-04-19" data-slot="morning">
+                <div class="slot-label">🌅 Formiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-19" data-slot="lunch">
+                <div class="slot-label">🍽️ Lunsj</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-19" data-slot="afternoon">
+                <div class="slot-label">☀️ Ettermiddag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-19" data-slot="dinner">
+                <div class="slot-label">🍷 Middag</div>
+                <div class="slot-items"></div>
+              </div>
+              <div class="time-slot" data-day="2026-04-19" data-slot="evening">
+                <div class="slot-label">🌙 Kveld</div>
+                <div class="slot-items"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- Søk -->
       <section id="view-search" class="view">
         <div class="view-header">
@@ -138,7 +304,11 @@
       </button>
       <button class="nav-btn" data-view="toplist">
         <span class="nav-icon">🏆</span>
-        <span class="nav-label">Toppliste</span>
+        <span class="nav-label">Topp</span>
+      </button>
+      <button class="nav-btn" data-view="itinerary">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Reiseplan</span>
       </button>
       <button class="nav-btn" data-view="search">
         <span class="nav-icon">🔍</span>

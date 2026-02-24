@@ -1,4 +1,4 @@
-import { addItem, listenToItems, listenToAllItems, rateItem, updateNotes, deleteItem, placeIdExists } from './firestore-service.js';
+import { addItem, listenToItems, listenToAllItems, rateItem, updateNotes, deleteItem, placeIdExists, addToItinerary, moveItineraryItem, removeFromItinerary, listenToItinerary } from './firestore-service.js';
 import { searchPlaces } from './places-search.js';
 
 // === State ===
@@ -6,6 +6,7 @@ let currentUser = localStorage.getItem('turplan_user') || null;
 let currentView = 'restaurants';
 let currentSearchType = 'restaurant';
 let allItems = [];
+let itineraryItems = [];
 let currentModalItemId = null;
 
 const USERS = ['Thomas', 'Carina', 'Kristine', 'Kim'];
@@ -106,6 +107,13 @@ function setupEventListeners() {
     addBtn.addEventListener('click', () => handleManualAdd(form, type));
   });
 
+  // Reiseplan: picker
+  document.getElementById('add-from-toplist-btn').addEventListener('click', openPicker);
+  document.getElementById('close-picker-btn').addEventListener('click', closePicker);
+
+  // Reiseplan: drag-and-drop setup
+  setupDragAndDrop();
+
   // Modal lukk
   document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
   document.querySelector('.modal-close').addEventListener('click', closeModal);
@@ -139,6 +147,11 @@ function startListeners() {
   listenToAllItems((items) => {
     allItems = items;
     renderToplist();
+  });
+
+  listenToItinerary((items) => {
+    itineraryItems = items;
+    renderItinerary();
   });
 }
 
@@ -554,6 +567,240 @@ function showToast(message) {
   toast.textContent = message;
   toast.classList.remove('hidden');
   setTimeout(() => toast.classList.add('hidden'), 2500);
+}
+
+// === Reiseplan ===
+function renderItinerary() {
+  // Render uplanlagte items
+  const unplanned = itineraryItems.filter(i => !i.day || !i.slot);
+  const unplannedContainer = document.querySelector('#unplanned-items .slot-items') ||
+    document.getElementById('unplanned-items');
+
+  const unplannedEl = document.getElementById('unplanned-items');
+  if (unplanned.length === 0) {
+    unplannedEl.innerHTML = '<div class="slot-empty">Legg til items og dra dem hit eller til en dag</div>';
+  } else {
+    unplannedEl.innerHTML = unplanned.map(item => createItineraryCard(item)).join('');
+  }
+
+  // Render planlagte items i tidsslotter
+  document.querySelectorAll('.day-slots .time-slot').forEach(slot => {
+    const day = slot.dataset.day;
+    const slotName = slot.dataset.slot;
+    const slotItemsContainer = slot.querySelector('.slot-items');
+
+    const slotItems = itineraryItems
+      .filter(i => i.day === day && i.slot === slotName)
+      .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+    slotItemsContainer.innerHTML = slotItems.length > 0
+      ? slotItems.map(item => createItineraryCard(item)).join('')
+      : '';
+  });
+
+  // Sett opp draggable og remove-knapper
+  document.querySelectorAll('.itinerary-card').forEach(card => {
+    card.setAttribute('draggable', 'true');
+    card.addEventListener('dragstart', handleDragStart);
+    card.addEventListener('dragend', handleDragEnd);
+    setupTouchDrag(card);
+  });
+
+  document.querySelectorAll('.itin-remove').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const docId = btn.closest('.itinerary-card').dataset.itinId;
+      try {
+        await removeFromItinerary(docId);
+        showToast('Fjernet fra reiseplan');
+      } catch (err) {
+        showToast('Kunne ikke fjerne');
+        console.error(err);
+      }
+    });
+  });
+}
+
+function createItineraryCard(item) {
+  const typeLabel = item.type === 'restaurant' ? 'Restaurant' : 'Aktivitet';
+  return `
+    <div class="itinerary-card" data-itin-id="${item.id}" draggable="true">
+      <span class="grip">⠿</span>
+      <span class="itin-name">${escapeHtml(item.name)}</span>
+      <span class="itin-type ${item.type}">${typeLabel}</span>
+      <button class="itin-remove" title="Fjern">&times;</button>
+    </div>`;
+}
+
+// === Picker: legg til fra listene ===
+function openPicker() {
+  const picker = document.getElementById('itinerary-picker');
+  const container = document.getElementById('picker-items');
+
+  // Vis alle items, marker de som allerede er i reiseplanen
+  const itineraryItemIds = new Set(itineraryItems.map(i => i.itemId));
+
+  const sorted = [...allItems].sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+
+  if (sorted.length === 0) {
+    container.innerHTML = '<div class="empty-state"><p>Ingen steder lagt til ennå. Legg til restauranter og aktiviteter først.</p></div>';
+  } else {
+    container.innerHTML = sorted.map(item => {
+      const alreadyAdded = itineraryItemIds.has(item.id);
+      const typeLabel = item.type === 'restaurant' ? '🍽️' : '🎯';
+      return `
+        <div class="picker-item">
+          <div class="picker-item-info">
+            <span class="picker-item-name">${typeLabel} ${escapeHtml(item.name)}</span>
+            ${item.averageRating > 0 ? `<span class="picker-item-rating">★ ${item.averageRating} (${item.ratingCount})</span>` : ''}
+          </div>
+          <button class="btn-add" data-item-id="${item.id}" data-name="${escapeHtml(item.name)}" data-type="${item.type}" ${alreadyAdded ? 'disabled' : ''}>
+            ${alreadyAdded ? 'Lagt til' : 'Legg til'}
+          </button>
+        </div>`;
+    }).join('');
+
+    container.querySelectorAll('.btn-add:not([disabled])').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        btn.disabled = true;
+        btn.textContent = 'Legger til...';
+        try {
+          await addToItinerary(btn.dataset.itemId, btn.dataset.name, btn.dataset.type, currentUser);
+          btn.textContent = 'Lagt til';
+          showToast('Lagt til i reiseplan');
+        } catch (err) {
+          btn.disabled = false;
+          btn.textContent = 'Legg til';
+          showToast('Kunne ikke legge til');
+          console.error(err);
+        }
+      });
+    });
+  }
+
+  picker.classList.remove('hidden');
+}
+
+function closePicker() {
+  document.getElementById('itinerary-picker').classList.add('hidden');
+}
+
+// === Drag-and-drop ===
+let draggedId = null;
+
+function setupDragAndDrop() {
+  document.querySelectorAll('.time-slot, #unplanned-items').forEach(slot => {
+    slot.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      slot.classList.add('drag-over');
+    });
+    slot.addEventListener('dragleave', () => {
+      slot.classList.remove('drag-over');
+    });
+    slot.addEventListener('drop', (e) => {
+      e.preventDefault();
+      slot.classList.remove('drag-over');
+      const itinId = e.dataTransfer.getData('text/plain');
+      if (!itinId) return;
+
+      const day = slot.dataset.day || null;
+      const slotName = slot.dataset.slot || null;
+
+      moveItineraryItem(itinId, day, slotName, 0).catch(err => {
+        showToast('Kunne ikke flytte');
+        console.error(err);
+      });
+    });
+  });
+}
+
+function handleDragStart(e) {
+  const id = e.target.dataset.itinId;
+  e.dataTransfer.setData('text/plain', id);
+  e.dataTransfer.effectAllowed = 'move';
+  draggedId = id;
+  setTimeout(() => e.target.classList.add('dragging'), 0);
+}
+
+function handleDragEnd(e) {
+  e.target.classList.remove('dragging');
+  draggedId = null;
+  document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+// === Touch drag-and-drop (mobil) ===
+function setupTouchDrag(card) {
+  let clone = null;
+  let startX, startY;
+  let currentDropTarget = null;
+
+  card.addEventListener('touchstart', (e) => {
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    draggedId = card.dataset.itinId;
+
+    clone = card.cloneNode(true);
+    clone.style.position = 'fixed';
+    clone.style.width = card.offsetWidth + 'px';
+    clone.style.pointerEvents = 'none';
+    clone.style.zIndex = '1000';
+    clone.style.opacity = '0.85';
+    clone.style.transform = 'scale(1.05)';
+    document.body.appendChild(clone);
+    positionClone(touch);
+
+    card.classList.add('dragging');
+  }, { passive: true });
+
+  card.addEventListener('touchmove', (e) => {
+    if (!clone) return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    positionClone(touch);
+
+    // Find drop target
+    clone.style.display = 'none';
+    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    clone.style.display = '';
+
+    const dropTarget = elementBelow?.closest('.time-slot, #unplanned-items');
+    if (currentDropTarget && currentDropTarget !== dropTarget) {
+      currentDropTarget.classList.remove('drag-over');
+    }
+    if (dropTarget) {
+      dropTarget.classList.add('drag-over');
+      currentDropTarget = dropTarget;
+    }
+  }, { passive: false });
+
+  card.addEventListener('touchend', () => {
+    if (clone) {
+      clone.remove();
+      clone = null;
+    }
+    card.classList.remove('dragging');
+
+    if (currentDropTarget && draggedId) {
+      const day = currentDropTarget.dataset.day || null;
+      const slot = currentDropTarget.dataset.slot || null;
+      currentDropTarget.classList.remove('drag-over');
+
+      moveItineraryItem(draggedId, day, slot, 0).catch(err => {
+        showToast('Kunne ikke flytte');
+        console.error(err);
+      });
+    }
+    currentDropTarget = null;
+    draggedId = null;
+  }, { passive: true });
+
+  function positionClone(touch) {
+    if (clone) {
+      clone.style.left = (touch.clientX - clone.offsetWidth / 2) + 'px';
+      clone.style.top = (touch.clientY - 20) + 'px';
+    }
+  }
 }
 
 // === Helpers ===

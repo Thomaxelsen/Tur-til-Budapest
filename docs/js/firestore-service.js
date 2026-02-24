@@ -98,3 +98,39 @@ export async function placeIdExists(placeId) {
   const snapshot = await getDocs(q);
   return !snapshot.empty;
 }
+
+// === Reiseplan (Itinerary) ===
+const itineraryRef = collection(db, 'itinerary');
+
+export async function addToItinerary(itemId, name, type, addedBy) {
+  return await addDoc(itineraryRef, {
+    itemId,
+    name,
+    type,
+    day: null,
+    slot: null,
+    order: 0,
+    addedBy,
+    addedAt: serverTimestamp()
+  });
+}
+
+export async function moveItineraryItem(docId, day, slot, order) {
+  const ref = doc(db, 'itinerary', docId);
+  await updateDoc(ref, { day, slot, order });
+}
+
+export async function removeFromItinerary(docId) {
+  const ref = doc(db, 'itinerary', docId);
+  await deleteDoc(ref);
+}
+
+export function listenToItinerary(callback) {
+  return onSnapshot(itineraryRef, (snapshot) => {
+    const items = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    callback(items);
+  }, (error) => {
+    console.error('Feil ved lasting av reiseplan:', error);
+    callback([]);
+  });
+}
