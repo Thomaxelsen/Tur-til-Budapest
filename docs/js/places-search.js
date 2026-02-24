@@ -63,7 +63,8 @@ export async function searchPlaces(queryText, type) {
       if (merged.length >= Number(RESULT_LIMIT)) break;
     }
 
-    mappedResults = merged.slice(0, Number(RESULT_LIMIT));
+    const filteredMerged = filterActivityFallbackResults(merged, fallbackQueries);
+    mappedResults = (filteredMerged.length > 0 ? filteredMerged : merged).slice(0, Number(RESULT_LIMIT));
   }
 
   setCachedSearchResults(cacheKey, mappedResults);
@@ -186,6 +187,50 @@ function getActivityFallbackQueries(queryText) {
   const normalized = (queryText || '').trim().toLowerCase();
   const extras = ACTIVITY_QUERY_TRANSLATIONS[normalized] || [];
   return [...new Set(extras)];
+}
+
+function filterActivityFallbackResults(results, queries) {
+  const keywords = buildActivityMatchKeywords(queries);
+  if (keywords.length === 0) return results;
+
+  return results.filter(result => {
+    const name = normalizeForMatch(result.name);
+    const category = normalizeForMatch(result.category);
+    return keywords.some(keyword => name.includes(keyword) || category.includes(keyword));
+  });
+}
+
+function buildActivityMatchKeywords(queries) {
+  const keywords = new Set();
+  const genericNoise = new Set(['budapest', 'hungary']);
+
+  for (const query of queries) {
+    const normalized = normalizeForMatch(query);
+    if (!normalized) continue;
+
+    normalized.split(/\s+/).forEach(part => {
+      if (part.length < 3) return;
+      if (genericNoise.has(part)) return;
+      keywords.add(part);
+    });
+
+    if (normalized.length >= 4 && !genericNoise.has(normalized)) {
+      keywords.add(normalized);
+    }
+  }
+
+  return [...keywords];
+}
+
+function normalizeForMatch(value) {
+  return (value || '')
+    .toString()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9\s/]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 function createSearchError(code, message) {
