@@ -36,7 +36,7 @@ html, body {
 }
 
 body {
-  background-image: url('../images/IMG_2810.JPEG');
+  background-image: url('../images/Budapest.png');
   background-size: cover;
   background-position: center top;
   background-attachment: fixed;
@@ -319,20 +319,22 @@ body::after {
   font-weight: 700;
   color: var(--accent);
   margin-bottom: 12px;
-  padding-bottom: 8px;
+  padding-bottom: 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
+  text-align: center;
 }
 
 .user-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 6px;
+  width: 128px;
+  height: 128px;
+  border-radius: 12px;
   object-fit: cover;
   flex-shrink: 0;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.25);
 }
 
 .user-section-count {
@@ -847,16 +849,26 @@ body::after {
 }
 
 /* === Toplist === */
-#toplist-content h3 {
-  font-size: 18px;
-  font-weight: 700;
-  margin-bottom: 12px;
-  margin-top: 24px;
-  color: var(--accent);
+.toplist-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-#toplist-content h3:first-child {
-  margin-top: 0;
+.toplist-column {
+  background: rgba(14, 26, 43, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  padding: 20px;
+}
+
+.toplist-column h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--accent);
 }
 
 .toplist-rank {
@@ -866,10 +878,10 @@ body::after {
 }
 
 .rank-number {
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
   color: var(--text-secondary);
-  min-width: 28px;
+  min-width: 32px;
   text-align: center;
 }
 
@@ -941,6 +953,12 @@ body::after {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 16px;
+  }
+
+  .toplist-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
   }
 
   .modal-content {
