@@ -134,6 +134,9 @@ function setupEventListeners() {
   // Reiseplan: drag-and-drop setup
   setupDragAndDrop();
 
+  // Eksport til kalender
+  document.getElementById('export-calendar-btn').addEventListener('click', exportToCalendar);
+
   // Modal lukk
   document.querySelector('#detail-modal .modal-backdrop').addEventListener('click', closeModal);
   document.querySelector('#detail-modal .modal-close').addEventListener('click', closeModal);
@@ -1168,6 +1171,129 @@ function setupTouchDrag(card) {
       clone.style.top = (touch.clientY - 20) + 'px';
     }
   }
+}
+
+// === Kalendereksport (ICS) ===
+function exportToCalendar() {
+  const SLOT_TIMES = {
+    morning:   { startH:  9, startM: 0, endH: 12, endM: 0 },
+    lunch:     { startH: 12, startM: 0, endH: 14, endM: 0 },
+    afternoon: { startH: 14, startM: 0, endH: 18, endM: 0 },
+    dinner:    { startH: 18, startM: 0, endH: 20, endM: 0 },
+    evening:   { startH: 20, startM: 0, endH: 23, endM: 0 },
+  };
+
+  const planned = itineraryItems.filter(i => i.day && i.slot);
+  if (planned.length === 0) {
+    showToast('Ingen planlagte aktiviteter å eksportere');
+    return;
+  }
+
+  // Group by day+slot so we can split time among multiple items
+  const grouped = {};
+  for (const item of planned) {
+    const key = `${item.day}|${item.slot}`;
+    if (!grouped[key]) grouped[key] = [];
+    grouped[key].push(item);
+  }
+  // Sort each group by order
+  for (const key of Object.keys(grouped)) {
+    grouped[key].sort((a, b) => (a.order || 0) - (b.order || 0));
+  }
+
+  const TYPE_EMOJI = { restaurant: '\uD83C\uDF7D\uFE0F', activity: '\uD83C\uDFAF', bar: '\uD83C\uDF7A' };
+
+  let events = '';
+  for (const [key, items] of Object.entries(grouped)) {
+    const [day, slot] = key.split('|');
+    const times = SLOT_TIMES[slot];
+    if (!times) continue;
+
+    const totalMinutes = (times.endH * 60 + times.endM) - (times.startH * 60 + times.startM);
+    const perItem = totalMinutes / items.length;
+
+    items.forEach((item, index) => {
+      const startMinutes = (times.startH * 60 + times.startM) + perItem * index;
+      const endMinutes = startMinutes + perItem;
+
+      const dtStart = formatIcsDateTime(day, startMinutes);
+      const dtEnd = formatIcsDateTime(day, endMinutes);
+
+      const sourceItem = allItems.find(ai => ai.id === item.itemId);
+      const address = sourceItem?.address || '';
+      const mapsUrl = sourceItem?.mapsUrl || '';
+      const tripAdvisorUrl = sourceItem?.tripAdvisorUrl || '';
+      const notes = sourceItem?.notes || '';
+
+      const emoji = TYPE_EMOJI[item.type] || '';
+      const summary = `${emoji} ${item.name}`;
+
+      let description = '';
+      if (mapsUrl) description += `Google Maps: ${mapsUrl}`;
+      if (tripAdvisorUrl) description += (description ? '\\n' : '') + `TripAdvisor: ${tripAdvisorUrl}`;
+      if (notes) description += (description ? '\\n' : '') + `Notater: ${notes}`;
+
+      events += 'BEGIN:VEVENT\r\n';
+      events += `DTSTART;TZID=Europe/Budapest:${dtStart}\r\n`;
+      events += `DTEND;TZID=Europe/Budapest:${dtEnd}\r\n`;
+      events += `SUMMARY:${icsEscape(summary)}\r\n`;
+      if (address) events += `LOCATION:${icsEscape(address)}\r\n`;
+      if (description) events += `DESCRIPTION:${icsEscape(description)}\r\n`;
+      if (mapsUrl) events += `URL:${mapsUrl}\r\n`;
+      events += `UID:${item.id}-${day}-${slot}@budapest2026\r\n`;
+      events += 'END:VEVENT\r\n';
+    });
+  }
+
+  const ics = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Budapest2026//Turplanlegger//NO',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'X-WR-CALNAME:Budapest 2026',
+    'X-WR-TIMEZONE:Europe/Budapest',
+    'BEGIN:VTIMEZONE',
+    'TZID:Europe/Budapest',
+    'BEGIN:STANDARD',
+    'DTSTART:19701025T030000',
+    'RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU',
+    'TZOFFSETFROM:+0200',
+    'TZOFFSETTO:+0100',
+    'TZNAME:CET',
+    'END:STANDARD',
+    'BEGIN:DAYLIGHT',
+    'DTSTART:19700329T020000',
+    'RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU',
+    'TZOFFSETFROM:+0100',
+    'TZOFFSETTO:+0200',
+    'TZNAME:CEST',
+    'END:DAYLIGHT',
+    'END:VTIMEZONE',
+    '',
+  ].join('\r\n') + events + 'END:VCALENDAR\r\n';
+
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'budapest-2026.ics';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Kalender eksportert!');
+}
+
+function formatIcsDateTime(isoDate, totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = Math.round(totalMinutes % 60);
+  const datePart = isoDate.replace(/-/g, '');
+  return `${datePart}T${String(h).padStart(2, '0')}${String(m).padStart(2, '0')}00`;
+}
+
+function icsEscape(str) {
+  return (str || '').replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
 // === Helpers ===

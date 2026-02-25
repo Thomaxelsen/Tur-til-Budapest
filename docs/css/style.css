@@ -1342,6 +1342,31 @@ body::after {
   to { transform: rotate(360deg); }
 }
 
+/* === Itinerary header === */
+.itinerary-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-export-calendar {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  background: rgba(45, 158, 135, 0.15);
+  color: var(--primary-light);
+  border: 1px solid rgba(45, 158, 135, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-export-calendar:hover {
+  background: rgba(45, 158, 135, 0.25);
+  border-color: rgba(45, 158, 135, 0.6);
+}
+
 /* === Hotel card === */
 .hotel-card {
   background: rgba(14, 26, 43, 0.85);
